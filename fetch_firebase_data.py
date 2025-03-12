@@ -5,7 +5,6 @@ from firebase_admin import credentials, firestore
 import pytz
 from datetime import datetime
 from dotenv import load_dotenv
-import json
 
 # Lataa ympäristömuuttujat
 load_dotenv(".env.local")
@@ -16,9 +15,7 @@ def initialize_firebase():
     if not firebase_admin._apps:
         try:
             # Käytä JSON-tiedostoa
-            cred = credentials.Certificate(
-                "botti-e5402-firebase-adminsdk-fbsvc-50b6327605.json"
-            )
+            cred = credentials.Certificate("botti-e5402-firebase-adminsdk-fbsvc-50b6327605.json")
             firebase_admin.initialize_app(cred)
             return firestore.client()
         except Exception as e:
@@ -94,13 +91,13 @@ def load_market_contexts_to_csv(output_file="pool_data.csv", use_cache=True):
                 if "timestamp" in data:
                     try:
                         if isinstance(data["timestamp"], (int, float)):
-                            data["timestamp"] = datetime.fromtimestamp(
-                                data["timestamp"] / 1000
-                            ).replace(tzinfo=pytz.UTC)
+                            data["timestamp"] = datetime.fromtimestamp(data["timestamp"] / 1000).replace(
+                                tzinfo=pytz.UTC
+                            )
                         elif isinstance(data["timestamp"], str):
-                            data["timestamp"] = datetime.fromtimestamp(
-                                float(data["timestamp"]) / 1000
-                            ).replace(tzinfo=pytz.UTC)
+                            data["timestamp"] = datetime.fromtimestamp(float(data["timestamp"]) / 1000).replace(
+                                tzinfo=pytz.UTC
+                            )
                     except Exception:
                         # Ohita virheelliset timestampit
                         continue
@@ -111,9 +108,7 @@ def load_market_contexts_to_csv(output_file="pool_data.csv", use_cache=True):
             if pool_contexts:
                 df = pd.DataFrame(pool_contexts)
                 all_pool_data.append(df)
-                print(
-                    f"[{idx}/{total_pools}] Ladattu {len(pool_contexts)} datapistettä poolille {pool_doc.id}"
-                )
+                print(f"[{idx}/{total_pools}] Ladattu {len(pool_contexts)} datapistettä poolille {pool_doc.id}")
 
         except Exception as e:
             print(f"Virhe poolin {pool_doc.id} käsittelyssä: {str(e)}")
@@ -124,9 +119,7 @@ def load_market_contexts_to_csv(output_file="pool_data.csv", use_cache=True):
 
     # Yhdistä kaikki data
     final_df = pd.concat(all_pool_data, ignore_index=True)
-    print(
-        f"\nYhteensä ladattu {len(final_df)} datapistettä {len(all_pool_data)} poolista"
-    )
+    print(f"\nYhteensä ladattu {len(final_df)} datapistettä {len(all_pool_data)} poolista")
 
     # Tallenna CSV:ksi
     print(f"\nTallennetaan data tiedostoon {output_file}...")
@@ -135,9 +128,7 @@ def load_market_contexts_to_csv(output_file="pool_data.csv", use_cache=True):
     final_df["timestamp"] = final_df["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S%z")
     final_df.to_csv(output_file, index=False)
 
-    print(
-        f"Data tallennettu! Tiedoston koko: {os.path.getsize(output_file) / (1024*1024):.2f} MB"
-    )
+    print(f"Data tallennettu! Tiedoston koko: {os.path.getsize(output_file) / (1024*1024):.2f} MB")
 
     # Tulostetaan statistiikkaa
     print("\nDatasetin statistiikka:")

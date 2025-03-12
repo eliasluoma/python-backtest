@@ -10,9 +10,7 @@ from part1_buy_simulation import BuySimulator, preprocess_pool_data
 from part2_sell_simulation import SellSimulator
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("SimulationRunner")
 
 
@@ -114,9 +112,7 @@ class BacktestRunner:
                     self.buy_opportunities.append(buy_opportunity)
                     logger.info(f"Found buy opportunity for pool {pool_addr}")
 
-            logger.info(
-                f"Buy simulation complete. Found {len(self.buy_opportunities)} opportunities."
-            )
+            logger.info(f"Buy simulation complete. Found {len(self.buy_opportunities)} opportunities.")
 
             # Run sell simulation
             if self.buy_opportunities:
@@ -126,9 +122,7 @@ class BacktestRunner:
                     if sell_result:
                         self.trade_results.append(sell_result)
 
-                logger.info(
-                    f"Sell simulation complete. Processed {len(self.trade_results)} trades."
-                )
+                logger.info(f"Sell simulation complete. Processed {len(self.trade_results)} trades.")
 
                 # Calculate summary statistics
                 if self.trade_results:
@@ -151,11 +145,7 @@ class BacktestRunner:
 
             win_rate = (winning_trades / total_trades) * 100 if total_trades > 0 else 0
 
-            avg_profit = (
-                sum([(p - 1.0) * 100 for p in profits]) / total_trades
-                if total_trades > 0
-                else 0
-            )
+            avg_profit = sum([(p - 1.0) * 100 for p in profits]) / total_trades if total_trades > 0 else 0
 
             logger.info("\n=== SIMULATION RESULTS ===")
             logger.info(f"Total trades: {total_trades}")
@@ -165,9 +155,7 @@ class BacktestRunner:
 
             # Print top 5 most profitable trades
             if self.trade_results:
-                sorted_results = sorted(
-                    self.trade_results, key=lambda x: x["profit_ratio"], reverse=True
-                )
+                sorted_results = sorted(self.trade_results, key=lambda x: x["profit_ratio"], reverse=True)
 
                 logger.info("\nTop 5 profitable trades:")
                 for i, trade in enumerate(sorted_results[:5], 1):
@@ -186,27 +174,17 @@ def main():
     """Main entry point for the simulation runner"""
     parser = argparse.ArgumentParser(description="Run Solana bot backtest simulations")
 
-    parser.add_argument(
-        "--credentials", type=str, help="Firebase credentials JSON file or string"
-    )
-    parser.add_argument(
-        "--env-file", type=str, default=".env.local", help="Path to .env file"
-    )
-    parser.add_argument(
-        "--max-pools", type=int, help="Maximum number of pools to analyze (for testing)"
-    )
+    parser.add_argument("--credentials", type=str, help="Firebase credentials JSON file or string")
+    parser.add_argument("--env-file", type=str, default=".env.local", help="Path to .env file")
+    parser.add_argument("--max-pools", type=int, help="Maximum number of pools to analyze (for testing)")
     parser.add_argument(
         "--early-mc-limit",
         type=float,
         default=400000,
         help="Market cap limit for early filtering",
     )
-    parser.add_argument(
-        "--min-delay", type=int, default=60, help="Minimum delay for buy simulation"
-    )
-    parser.add_argument(
-        "--max-delay", type=int, default=200, help="Maximum delay for buy simulation"
-    )
+    parser.add_argument("--min-delay", type=int, default=60, help="Minimum delay for buy simulation")
+    parser.add_argument("--max-delay", type=int, default=200, help="Maximum delay for buy simulation")
 
     args = parser.parse_args()
 

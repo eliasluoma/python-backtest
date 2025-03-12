@@ -10,9 +10,7 @@ from typing import Dict, List, Optional, Union, Any
 import logging
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("FirebaseService")
 
 
@@ -23,9 +21,7 @@ class FirebaseService:
     without storing data in local files.
     """
 
-    def __init__(
-        self, env_file: str = ".env.local", credentials_json: Optional[str] = None
-    ):
+    def __init__(self, env_file: str = ".env.local", credentials_json: Optional[str] = None):
         """
         Initialize the Firebase service
 
@@ -36,9 +32,7 @@ class FirebaseService:
         self.db = None
         self._initialize_firebase(env_file, credentials_json)
 
-    def _initialize_firebase(
-        self, env_file: str = ".env.local", credentials_json: Optional[str] = None
-    ):
+    def _initialize_firebase(self, env_file: str = ".env.local", credentials_json: Optional[str] = None):
         """
         Initialize Firebase connection
 
@@ -73,9 +67,7 @@ class FirebaseService:
                     cred = credentials.Certificate(cred_dict)
                 # Try to use a locally stored service account file
                 elif os.environ.get("FIREBASE_CREDENTIALS_FILE"):
-                    cred = credentials.Certificate(
-                        os.environ.get("FIREBASE_CREDENTIALS_FILE")
-                    )
+                    cred = credentials.Certificate(os.environ.get("FIREBASE_CREDENTIALS_FILE"))
                 else:
                     logger.error("No Firebase credentials provided")
                     raise ValueError(
@@ -117,9 +109,7 @@ class FirebaseService:
         for idx, pool_doc in enumerate(pool_docs, 1):
             try:
                 # Fetch all market contexts for this pool
-                contexts = (
-                    pool_doc.collection("marketContexts").order_by("timestamp").get()
-                )
+                contexts = pool_doc.collection("marketContexts").order_by("timestamp").get()
 
                 pool_contexts = []
                 for context in contexts:
@@ -149,13 +139,13 @@ class FirebaseService:
                     if "timestamp" in data:
                         try:
                             if isinstance(data["timestamp"], (int, float)):
-                                data["timestamp"] = datetime.fromtimestamp(
-                                    data["timestamp"] / 1000
-                                ).replace(tzinfo=pytz.UTC)
+                                data["timestamp"] = datetime.fromtimestamp(data["timestamp"] / 1000).replace(
+                                    tzinfo=pytz.UTC
+                                )
                             elif isinstance(data["timestamp"], str):
-                                data["timestamp"] = datetime.fromtimestamp(
-                                    float(data["timestamp"]) / 1000
-                                ).replace(tzinfo=pytz.UTC)
+                                data["timestamp"] = datetime.fromtimestamp(float(data["timestamp"]) / 1000).replace(
+                                    tzinfo=pytz.UTC
+                                )
                         except Exception:
                             # Skip invalid timestamps
                             continue
@@ -166,9 +156,7 @@ class FirebaseService:
                 if pool_contexts:
                     df = pd.DataFrame(pool_contexts)
                     all_pool_data.append(df)
-                    logger.info(
-                        f"[{idx}/{total_pools}] Loaded {len(pool_contexts)} data points for pool {pool_doc.id}"
-                    )
+                    logger.info(f"[{idx}/{total_pools}] Loaded {len(pool_contexts)} data points for pool {pool_doc.id}")
 
             except Exception as e:
                 logger.error(f"Error processing pool {pool_doc.id}: {str(e)}")
@@ -179,9 +167,7 @@ class FirebaseService:
 
         # Combine all data
         final_df = pd.concat(all_pool_data, ignore_index=True)
-        logger.info(
-            f"Total data loaded: {len(final_df)} data points from {len(all_pool_data)} pools"
-        )
+        logger.info(f"Total data loaded: {len(final_df)} data points from {len(all_pool_data)} pools")
 
         # Print statistics
         logger.info("\nDataset statistics:")
@@ -189,12 +175,8 @@ class FirebaseService:
         logger.info(f"Unique pools: {final_df['poolAddress'].nunique()}")
 
         pool_counts = final_df["poolAddress"].value_counts()
-        logger.info(
-            f"Data points per pool - Mean: {pool_counts.mean():.1f}, Median: {pool_counts.median():.1f}"
-        )
-        logger.info(
-            f"Data points per pool - Min: {pool_counts.min()}, Max: {pool_counts.max()}"
-        )
+        logger.info(f"Data points per pool - Mean: {pool_counts.mean():.1f}, Median: {pool_counts.median():.1f}")
+        logger.info(f"Data points per pool - Min: {pool_counts.min()}, Max: {pool_counts.max()}")
 
         return final_df
 
@@ -211,9 +193,7 @@ class FirebaseService:
         logger.info("Preprocessing market data...")
 
         # Ensure timestamp is in datetime format
-        if "timestamp" in df.columns and not pd.api.types.is_datetime64_any_dtype(
-            df["timestamp"]
-        ):
+        if "timestamp" in df.columns and not pd.api.types.is_datetime64_any_dtype(df["timestamp"]):
             df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
 
         # Sort by pool and timestamp
