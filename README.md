@@ -2,32 +2,11 @@
 
 A backtesting framework for Solana token trading strategies using market data from Firebase.
 
-## Project Structure
+## Overview
 
-```
-python-backtest/
-├── legacy/                  # Legacy scripts (for reference)
-├── scripts/                 # Executable scripts
-│   ├── run_simulation.py    # Main simulation script
-│   └── test_sell_simulation.py # Sell strategy test script
-├── src/                     # Source code
-│   ├── config/              # Configuration settings
-│   ├── data/                # Data services
-│   │   ├── data_processor.py
-│   │   └── firebase_service.py
-│   ├── simulation/          # Simulation modules
-│   │   ├── buy_simulator.py
-│   │   └── sell_simulator.py
-│   └── utils/               # Utility functions
-├── tests/                   # Test suite
-│   ├── data/                # Data service tests
-│   ├── integration/         # Integration tests
-│   ├── simulation/          # Simulator tests
-│   └── run_all_tests.py     # Test runner
-└── fetch_firebase_data.py   # Data retrieval script
-```
+This project provides a comprehensive framework for simulating and optimizing trading strategies for Solana tokens. It uses market data to identify optimal buy and sell parameters based on configurable metrics.
 
-## Features
+### Key Features
 
 - Buy strategy simulation based on market metrics
 - Sell strategy simulation with configurable take-profit and stop-loss
@@ -35,7 +14,7 @@ python-backtest/
 - Comprehensive test suite
 - Custom market data visualization
 
-## Getting Started
+## Quick Start
 
 ### Prerequisites
 
@@ -44,50 +23,39 @@ python-backtest/
 
 ### Installation
 
-1. Clone the repository:
-   ```
-   git clone <repository-url>
-   cd python-backtest
-   ```
+```bash
+# Clone the repository
+git clone <repository-url>
+cd python-backtest
 
-2. Install dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
+# Install dependencies
+pip install -r requirements.txt
 
-3. Set up Firebase credentials:
-   ```
-   cp path/to/your-firebase-key.json firebase-key.json
-   ```
+# Set up Firebase credentials
+cp path/to/your-firebase-key.json firebase-key.json
+```
 
-### Running Simulations
-
-Run a basic simulation:
+### Basic Usage
 
 ```bash
+# Run a basic simulation
 python scripts/run_simulation.py --credentials firebase-key.json
-```
 
-Additional options:
+# Test sell strategies with simulated data
+python scripts/test_sell_simulation.py
 
-```bash
-# Run with verbose output
-python scripts/run_simulation.py --credentials firebase-key.json --verbose
-
-# Limit number of pools to analyze
-python scripts/run_simulation.py --credentials firebase-key.json --max-pools 5
-
-# Customize sell strategy parameters
-python scripts/run_simulation.py --credentials firebase-key.json --take-profit 2.0 --stop-loss 0.7 --trailing-stop 0.85
-```
-
-### Running Tests
-
-Run all tests:
-
-```bash
+# Run all tests
 python tests/run_all_tests.py
 ```
+
+## Documentation
+
+For detailed documentation, please see the [docs folder](./docs):
+
+- [Complete User Guide](./docs/index.md)
+- [Buy Simulator Documentation](./docs/buy_simulator.md)
+- [Sell Simulator Documentation](./docs/sell_simulator.md)
+- [Simulation Guide](./docs/simulation_guide.md)
 
 ## License
 
