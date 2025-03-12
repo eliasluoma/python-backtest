@@ -49,4 +49,4 @@ Thumbs.db
 # Project specific
 logs/
 log/
-.mypy_cache/ 
+.mypy_cache/ firebase-key.json
