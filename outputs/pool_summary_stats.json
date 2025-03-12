@@ -1,0 +1,59 @@
+{
+  "total_pools": 100,
+  "pools_with_10min_data": 60,
+  "pools_with_consistent_data": 97,
+  "common_fields": [
+    "netVolume5s",
+    "buyVolume10s",
+    "marketCapChange10s",
+    "bigBuy5s",
+    "maMarketCap10s",
+    "timeFromStart",
+    "marketCapChange5s",
+    "minMarketCap",
+    "holdersCount",
+    "priceChangePercent",
+    "bigBuy10s",
+    "buyVolume5s",
+    "doc_id",
+    "marketCapChange30s",
+    "athMarketCap",
+    "largeBuy5s",
+    "holdersGrowthFromStart",
+    "initialHoldersCount",
+    "maMarketCap30s",
+    "superBuy5s",
+    "largeBuy10s",
+    "marketCapChange60s",
+    "holderDelta5s",
+    "poolAddress",
+    "superBuy10s",
+    "netVolume10s",
+    "timestamp",
+    "currentPrice",
+    "maMarketCap60s",
+    "holderDelta30s",
+    "holderDelta10s",
+    "marketCap",
+    "priceChangeFromStart",
+    "holderDelta60s"
+  ],
+  "time_span_stats": {
+    "mean": 11.294554639175255,
+    "median": 15.046983333333333,
+    "max": 20.2849,
+    "min": 0.20503333333333332
+  },
+  "data_points_stats": {
+    "mean": 643.9381443298969,
+    "median": 855.0,
+    "max": 1000,
+    "min": 13
+  },
+  "points_per_minute": {
+    "mean": 56.800482044795636,
+    "median": 59.50373881825575,
+    "max": 63.404324500081295,
+    "min": 42.70771935783574
+  }
+}

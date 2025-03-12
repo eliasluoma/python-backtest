@@ -7,6 +7,7 @@ Welcome to the documentation for the Solana Trading Strategy Simulator. This dir
 ### Getting Started
 - [Complete User Guide](./index.md) - Overview and complete usage guide
 - [Simulation Guide](./simulation_guide.md) - How to run different types of simulations
+- [Firebase Setup Guide](./firebase_setup.md) - How to set up and use Firebase
 
 ### Components
 - [Buy Simulator Documentation](./buy_simulator.md) - Entry strategy implementation

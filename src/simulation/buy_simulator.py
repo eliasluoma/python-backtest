@@ -74,69 +74,91 @@ class BuySimulator:
         pool_data: pd.DataFrame,
     ) -> bool:
         """
-        Check if buy conditions are met for a given set of metrics.
+        Check if current metrics meet buying conditions.
 
         Args:
-            metrics: Current metrics to evaluate
-            initial_metrics: Metrics at the start of the pool
-            pool_data: Complete pool data
+            metrics: Dictionary of current market metrics
+            initial_metrics: Dictionary of initial/baseline metrics
+            pool_data: DataFrame with pool data up to current point
 
         Returns:
-            True if conditions are met, False otherwise
+            Boolean indicating whether buying conditions are met
         """
         try:
-            # Early market cap filter
-            if len(pool_data) > 10:
-                mc_at_10s = pool_data.iloc[10]["marketCap"]
-                if mc_at_10s > self.early_mc_limit:
-                    logger.debug(f"Pool rejected: MC at 10s ({mc_at_10s:.2f}) > limit ({self.early_mc_limit})")
+            logger.debug(f"Checking buy conditions with: {metrics}")
+            logger.debug(f"Initial metrics: {initial_metrics}")
+
+            # Track metrics that passed checks
+            passed_metrics = []
+
+            # Check each metric against its threshold
+            for metric_name, threshold in self.buy_params.items():
+                # Skip price_change check if not available (special case)
+                if metric_name == "price_change" and "price_change" not in metrics:
+                    logger.debug(f"Skipping {metric_name} check - not in metrics")
+                    continue
+
+                # Choose where to look for the metric
+                actual_value = None
+
+                # Try to get from current metrics first
+                if metric_name in metrics:
+                    actual_value = metrics[metric_name]
+                # Try alternate names (for backward compatibility)
+                elif metric_name == "mc_change_5s" and "marketCapChange5s" in metrics:
+                    actual_value = metrics["marketCapChange5s"]
+                elif metric_name == "holder_delta_30s" and "holderDelta30s" in metrics:
+                    actual_value = metrics["holderDelta30s"]
+                elif metric_name == "buy_volume_5s" and "buyVolume5s" in metrics:
+                    actual_value = metrics["buyVolume5s"]
+                elif metric_name == "net_volume_5s" and "netVolume5s" in metrics:
+                    actual_value = metrics["netVolume5s"]
+                elif metric_name == "buy_sell_ratio_10s" and "buySellRatio10s" in metrics:
+                    actual_value = metrics["buySellRatio10s"]
+                elif metric_name == "large_buy_5s" and "largeBuys5s" in metrics:
+                    actual_value = metrics["largeBuys5s"]
+                # Try to get from initial metrics for growth checks
+                elif metric_name in initial_metrics:
+                    actual_value = initial_metrics[metric_name]
+
+                # If we still don't have a value, try calculated metrics
+                if actual_value is None:
+                    if metric_name == "mc_growth_from_start" and "marketCap" in pool_data.columns:
+                        # Calculate growth from start
+                        start_mc = pool_data["marketCap"].iloc[0]
+                        current_mc = pool_data["marketCap"].iloc[-1]
+                        if start_mc > 0:
+                            actual_value = ((current_mc / start_mc) - 1) * 100
+                    elif metric_name == "holder_growth_from_start" and "holders" in pool_data.columns:
+                        # Calculate holder growth
+                        start_holders = pool_data["holders"].iloc[0]
+                        current_holders = pool_data["holders"].iloc[-1]
+                        actual_value = current_holders - start_holders
+
+                # If we still don't have a value, log a warning and continue
+                if actual_value is None:
+                    if not hasattr(self, f"_warned_{metric_name}"):
+                        logger.warning(f"Metric {metric_name} not found in data")
+                        setattr(self, f"_warned_{metric_name}", True)
+                    continue
+
+                # Check if the metric meets the threshold
+                if actual_value < threshold:
+                    logger.debug(f"Failed check: {metric_name} = {actual_value} < {threshold}")
                     return False
 
-            # Calculate growth from start if not already in metrics
-            if "mc_growth_from_start" not in metrics:
-                initial_mc = initial_metrics.get("marketCap", 0)
-                current_mc = metrics.get("mc_at_delay", 0)
-                if initial_mc > 0:
-                    mc_growth = ((current_mc / initial_mc) - 1) * 100
-                    metrics["mc_growth_from_start"] = mc_growth
-                else:
-                    metrics["mc_growth_from_start"] = 0
+                passed_metrics.append(f"{metric_name}={actual_value:.2f}")
 
-            if "holder_growth_from_start" not in metrics:
-                initial_holders = initial_metrics.get("holdersCount", 0)
-                current_holders = metrics.get("holders_at_delay", 0)
-                holder_growth = current_holders - initial_holders
-                metrics["holder_growth_from_start"] = holder_growth
-
-            # Count how many conditions are met
-            conditions_met = 0
-            conditions_total = 0
-
-            for param, threshold in self.buy_params.items():
-                conditions_total += 1
-                if param in metrics:
-                    if metrics[param] > threshold:
-                        conditions_met += 1
-                        logger.debug(f"Condition {param} met: {metrics[param]:.2f} > {threshold}")
-                    else:
-                        logger.debug(f"Condition {param} not met: {metrics[param]:.2f} <= {threshold}")
-                else:
-                    logger.warning(f"Metric {param} not found in data")
-
-            # Require a minimum number of conditions to be met (configurable)
-            required_conditions = max(1, int(conditions_total * 0.7))  # At least 70% of conditions
-
-            if conditions_met >= required_conditions:
-                logger.info(f"Buy conditions met: {conditions_met}/{conditions_total} parameters exceed thresholds")
+            # All checks passed (or skipped)
+            if passed_metrics:
+                logger.debug(f"All checks passed: {', '.join(passed_metrics)}")
                 return True
             else:
-                logger.debug(
-                    f"Buy conditions not met: only {conditions_met}/{conditions_total} parameters exceed thresholds"
-                )
+                logger.warning("No metrics were checked - all were missing")
                 return False
 
         except Exception as e:
-            logger.error(f"Error checking buy conditions: {str(e)}")
+            logger.error(f"Error in check_buy_conditions: {str(e)}")
             return False
 
     def find_buy_opportunity(self, pool_data: pd.DataFrame) -> Optional[Dict]:
@@ -157,98 +179,103 @@ class BuySimulator:
             # Make sure data is sorted by timestamp
             pool_data = pool_data.sort_values("timestamp")
 
-            # Get pool address
-            pool_address = pool_data["poolAddress"].iloc[0]
+            # Get pool address - handle both column name formats
+            if "poolAddress" in pool_data.columns:
+                pool_address = pool_data["poolAddress"].iloc[0]
+                address_column = "poolAddress"
+            elif "pool_address" in pool_data.columns:
+                pool_address = pool_data["pool_address"].iloc[0]
+                address_column = "pool_address"
+            else:
+                logger.error("No pool address column found in data")
+                return None
+
             logger.info(f"Analyzing pool {pool_address} with {len(pool_data)} data points")
+
+            # Log columns available for debugging
 
             # Check minimum data requirements
             if len(pool_data) < self.max_delay + 10:
-                logger.warning(
-                    f"Insufficient data for pool {pool_address}: {len(pool_data)} points < {self.max_delay + 10} required"
-                )
+                logger.warning(f"Insufficient data points: {len(pool_data)} (need at least {self.max_delay + 10})")
                 return None
 
-            # Store initial metrics
-            initial_metrics = {
-                "marketCap": pool_data.iloc[0]["marketCap"],
-                "holdersCount": pool_data.iloc[0]["holdersCount"] if "holdersCount" in pool_data.columns else 0,
-            }
+            # Apply early market cap filter if enabled
+            if self.early_mc_limit > 0:
+                max_mc = pool_data["marketCap"].max()
+                if max_mc > self.early_mc_limit:
+                    logger.warning(
+                        f"Pool {pool_address} exceeds early market cap limit: {max_mc:.0f} > {self.early_mc_limit:.0f}"
+                    )
+                    return None
+                logger.info(f"Pool passes early MC filter: {max_mc:.0f} <= {self.early_mc_limit:.0f}")
 
-            logger.debug(
-                f"Initial metrics: MC={initial_metrics['marketCap']:.2f}, Holders={initial_metrics['holdersCount']}"
-            )
+            # Wait for minimum delay before considering buying
+            if self.min_delay > 0:
+                window_start = self.min_delay
+            else:
+                window_start = 0
 
-            # Check each potential buy point within the delay window
-            for delay in range(self.min_delay, min(self.max_delay + 1, len(pool_data))):
-                try:
-                    # Prepare current metrics
-                    current_metrics = {
-                        "mc_at_delay": pool_data.iloc[delay]["marketCap"],
-                        "holders_at_delay": (
-                            pool_data.iloc[delay]["holdersCount"] if "holdersCount" in pool_data.columns else 0
-                        ),
+            # Only consider buy up to max_delay
+            window_end = min(self.max_delay, len(pool_data) - 10)  # Leave at least 10 rows for post-analysis
+
+            if window_start >= window_end:
+                logger.warning(f"Buy window is empty: {window_start} to {window_end}")
+                return None
+
+            logger.info(f"Scanning for buy opportunities between rows {window_start} and {window_end}")
+
+            # Scan through the window for buy opportunities
+            for i in range(window_start, window_end):
+                current_row = pool_data.iloc[i]
+
+                # Get current price metrics
+                current_metrics = {
+                    "mc_change_5s": current_row.get("marketCapChange5s", 0),
+                    "mc_change_30s": current_row.get("marketCapChange30s", 0),
+                    "holder_delta_30s": current_row.get("holderDelta30s", 0),
+                    "buy_volume_5s": current_row.get("buyVolume5s", 0),
+                    "net_volume_5s": current_row.get("netVolume5s", 0),
+                    "buy_sell_ratio_10s": current_row.get("buySellRatio10s", 1.0),
+                    "large_buy_5s": current_row.get("largeBuys5s", 0),
+                }
+
+                # Get metrics from the beginning of data for growth checks
+                initial_row = pool_data.iloc[0]
+                initial_metrics = {
+                    "mc_growth_from_start": (
+                        (current_row["marketCap"] / initial_row["marketCap"] - 1) * 100
+                        if "marketCap" in initial_row and initial_row["marketCap"] > 0
+                        else 0
+                    ),
+                    "holder_growth_from_start": (
+                        current_row["holders"] - initial_row["holders"] if "holders" in initial_row else 0
+                    ),
+                }
+
+                # Check if this point meets buy criteria
+                if self.check_buy_conditions(current_metrics, initial_metrics, pool_data.iloc[: i + 1]):
+                    # Calculate the entry price (market cap)
+                    entry_price = current_row["marketCap"]
+                    entry_time = (
+                        current_row["timestamp"].isoformat()
+                        if isinstance(current_row["timestamp"], datetime)
+                        else str(current_row["timestamp"])
+                    )
+
+                    # Create the buy opportunity record
+                    buy_opportunity = {
+                        address_column: pool_address,  # Use the correct column name
+                        "entry_price": entry_price,
+                        "entry_time": entry_time,
+                        "entry_row": i,
+                        "entry_metrics": {**current_metrics, **initial_metrics},
+                        "post_entry_data": pool_data.iloc[i:].reset_index(drop=True),
                     }
 
-                    # Add all available metrics
-                    for col in pool_data.columns:
-                        if col in [
-                            "marketCapChange5s",
-                            "marketCapChange10s",
-                            "marketCapChange30s",
-                            "holderDelta5s",
-                            "holderDelta30s",
-                            "holderDelta60s",
-                            "buyVolume5s",
-                            "netVolume5s",
-                            "priceChangePercent",
-                            "largeBuy5s",
-                        ]:
-                            current_metrics[col.lower()] = pool_data.iloc[delay][col]
+                    logger.info(f"Buy opportunity found at row {i} with price {entry_price:.2f}")
+                    return buy_opportunity
 
-                    # Map column names to our parameter names
-                    metric_mapping = {
-                        "marketcapchange5s": "mc_change_5s",
-                        "marketcapchange30s": "mc_change_30s",
-                        "holderdelta30s": "holder_delta_30s",
-                        "pricepercent": "price_change",
-                    }
-
-                    # Apply mapping
-                    for old_name, new_name in metric_mapping.items():
-                        if old_name in current_metrics:
-                            current_metrics[new_name] = current_metrics.pop(old_name)
-
-                    # Check if buy conditions are met
-                    if self.check_buy_conditions(current_metrics, initial_metrics, pool_data[: delay + 1]):
-                        # Found buy opportunity
-                        entry_time = pool_data.iloc[delay]["timestamp"]
-                        entry_price = pool_data.iloc[delay]["marketCap"]
-
-                        logger.info(f"Buy opportunity found in pool {pool_address} at delay {delay}")
-                        logger.info(f"Entry price: {entry_price:.2f}, Entry time: {entry_time}")
-
-                        # Get post-entry data for later sell simulation
-                        post_entry_data = pool_data.iloc[delay:].copy()
-
-                        # Create buy opportunity object
-                        buy_opportunity = {
-                            "pool_address": pool_address,
-                            "entry_row": delay,
-                            "entry_time": str(entry_time),
-                            "entry_price": entry_price,
-                            "entry_metrics": current_metrics,
-                            "initial_metrics": initial_metrics,
-                            "post_entry_data": post_entry_data,
-                            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        }
-
-                        return buy_opportunity
-
-                except Exception as e:
-                    logger.error(f"Error processing delay {delay}: {str(e)}")
-                    continue
-
-            logger.debug(f"No buy opportunity found for pool {pool_address}")
+            logger.info("No buy opportunities found in this pool")
             return None
 
         except Exception as e:

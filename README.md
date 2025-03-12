@@ -1,61 +1,147 @@
-# Solana Trading Strategy Simulator
+# Solana Trading Simulator
 
-A backtesting framework for Solana token trading strategies using market data from Firebase.
+This project is a backtesting framework for Solana trading strategies. It can fetch market data from Firebase, process it, analyze it, and simulate trading strategies.
 
-## Overview
+## Features
 
-This project provides a comprehensive framework for simulating and optimizing trading strategies for Solana tokens. It uses market data to identify optimal buy and sell parameters based on configurable metrics.
+- **Firebase Integration**: Fetch market data directly from Firebase Firestore.
+- **Data Processing**: Clean, process, and analyze market data.
+- **Backtesting**: Test trading strategies on historical data.
+- **Visualization**: Generate charts and metrics for market analysis.
 
-### Key Features
-
-- Buy strategy simulation based on market metrics
-- Sell strategy simulation with configurable take-profit and stop-loss
-- Firebase integration for retrieving market data
-- Comprehensive test suite
-- Custom market data visualization
-
-## Quick Start
+## Setup
 
 ### Prerequisites
 
 - Python 3.8+
-- Firebase credentials (JSON key file)
+- pip
+- Firebase account with Firestore database
 
 ### Installation
 
-```bash
-# Clone the repository
-git clone <repository-url>
-cd python-backtest
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/solana-trading-simulator.git
+   cd solana-trading-simulator
+   ```
 
-# Install dependencies
-pip install -r requirements.txt
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-# Set up Firebase credentials
-cp path/to/your-firebase-key.json firebase-key.json
+3. Set up Firebase credentials:
+   
+   Place your Firebase service account key in the project root as `firebase-key.json`.
+   
+   Alternatively, you can set an environment variable to point to your credentials file:
+   ```bash
+   export FIREBASE_KEY_FILE=/path/to/your/firebase-key.json
+   ```
+
+### Configuration
+
+Create a `.env.local` file in the project root with the following variables (optional):
+```
+FIREBASE_KEY_FILE=path/to/your/firebase-key.json
+MIN_DATA_POINTS=20
+MAX_POOLS=10
 ```
 
-### Basic Usage
+## Usage
+
+### Fetching Data from Firebase
+
+```python
+from src.data.firebase_service import FirebaseService
+
+# Initialize Firebase service
+firebase_service = FirebaseService()
+
+# Fetch market data
+market_data = firebase_service.fetch_market_data(
+    min_data_points=20,  # Minimum data points required per pool
+    max_pools=10,        # Maximum number of pools to fetch
+    limit_per_pool=100   # Maximum number of data points per pool
+)
+
+# Fetch data for a specific pool
+pool_address = "12QspooeZFsA4d41KtLz4p3e8YyLzPxG4bShsUCBbEgU"
+pool_data = firebase_service.fetch_market_data(pool_address=pool_address)
+
+# Fetch recent market data (last 24 hours)
+recent_data = firebase_service.fetch_recent_market_data(hours_back=24)
+```
+
+### Analyzing Market Data
+
+You can run the market data analysis script to analyze and visualize the Firebase data:
 
 ```bash
-# Run a basic simulation
-python scripts/run_simulation.py --credentials firebase-key.json
+python examples/analyze_market_data.py
+```
 
-# Test sell strategies with simulated data
-python scripts/test_sell_simulation.py
+This will:
+1. Fetch data from Firebase
+2. Generate statistical summaries
+3. Create visualization charts in the `outputs` directory
 
-# Run all tests
+### Data Structure
+
+The Firebase data is structured as follows:
+
+- **marketContext**: Main collection containing pool documents
+  - Each pool document has a unique ID (pool address)
+  - **marketContexts**: Subcollection with time-series data points
+
+For a detailed explanation of the data schema, see the [Firebase Data Schema Documentation](docs/firebase_data_schema.md).
+
+## Project Structure
+
+```
+solana-trading-simulator/
+├── docs/
+│   └── firebase_data_schema.md  # Data schema documentation
+├── examples/
+│   └── analyze_market_data.py   # Example script for data analysis
+├── outputs/                     # Output directory for charts and results
+├── src/
+│   ├── data/
+│   │   └── firebase_service.py  # Firebase service for fetching data
+│   ├── utils/
+│   │   └── firebase_utils.py    # Utility functions for Firebase
+│   ├── simulation/             # Simulation modules
+│   └── strategies/             # Trading strategy implementations
+├── tests/
+│   └── data/
+│       └── test_firebase_service.py  # Tests for Firebase service
+├── .env.local                  # Local environment variables
+├── firebase-key.json           # Firebase credentials (not in repo)
+├── requirements.txt            # Project dependencies
+└── README.md                   # Project documentation
+```
+
+## Testing
+
+Run all tests with:
+
+```bash
 python tests/run_all_tests.py
 ```
 
-## Documentation
+To run specific tests:
 
-For detailed documentation, please see the [docs folder](./docs):
+```bash
+python -m unittest tests/data/test_firebase_service.py
+```
 
-- [Complete User Guide](./docs/index.md)
-- [Buy Simulator Documentation](./docs/buy_simulator.md)
-- [Sell Simulator Documentation](./docs/sell_simulator.md)
-- [Simulation Guide](./docs/simulation_guide.md)
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 

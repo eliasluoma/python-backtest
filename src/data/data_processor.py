@@ -16,33 +16,61 @@ logger = logging.getLogger("DataProcessor")
 
 def preprocess_pool_data(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Preprocess pool data for backtesting.
+    Preprocess pool data to calculate derived metrics.
 
     Args:
-        df: DataFrame containing pool data
+        df: DataFrame containing market data for a single pool
 
     Returns:
-        Preprocessed DataFrame
+        DataFrame with additional derived metrics
     """
     logger.info(f"Preprocessing pool data with {len(df)} records")
 
-    if df.empty:
-        logger.warning("Empty DataFrame provided for preprocessing")
+    try:
+        # Make a copy to avoid modifying the original
+        df = df.copy()
+
+        # Ensure standardized column naming
+        if "poolAddress" in df.columns and "pool_address" not in df.columns:
+            df["pool_address"] = df["poolAddress"]
+        elif "pool_address" in df.columns and "poolAddress" not in df.columns:
+            df["poolAddress"] = df["pool_address"]
+
+        # Ensure timestamp is in datetime format
+        if "timestamp" in df.columns:
+            if not pd.api.types.is_datetime64_any_dtype(df["timestamp"]):
+                df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed", utc=True)
+
+            # Sort by timestamp to ensure proper calculation of changes
+            df = df.sort_values("timestamp")
+
+        # Calculate market cap changes
+        if "marketCap" in df.columns:
+            # Percentage changes over different time windows
+            df["marketCapChange5s"] = df["marketCap"].pct_change() * 100
+            df["marketCapChange30s"] = df["marketCap"].pct_change(6) * 100  # Assuming 5s intervals
+            df["marketCapChange60s"] = df["marketCap"].pct_change(12) * 100
+
+            # Growth from the start of the data
+            first_mc = df["marketCap"].iloc[0] if not df.empty else 0
+            df["mcGrowthFromStart"] = ((df["marketCap"] - first_mc) / first_mc) * 100 if first_mc > 0 else 0
+
+        # Calculate holder changes
+        if "holders" in df.columns:
+            # Absolute changes over different time windows
+            df["holderDelta5s"] = df["holders"].diff()
+            df["holderDelta30s"] = df["holders"].diff(6)  # Assuming 5s intervals
+            df["holderDelta60s"] = df["holders"].diff(12)
+
+            # Growth from the start of the data
+            first_holders = df["holders"].iloc[0] if not df.empty else 0
+            df["holderGrowthFromStart"] = df["holders"] - first_holders
+
         return df
 
-    # Make a copy to avoid modifying the original
-    df = df.copy()
-
-    # Sort by timestamp
-    df = df.sort_values("timestamp")
-
-    # Calculate additional metrics that might be needed for the simulations
-    try:
-        df = calculate_derived_metrics(df)
     except Exception as e:
         logger.error(f"Error calculating derived metrics: {str(e)}")
-
-    return df
+        return df
 
 
 def calculate_derived_metrics(df: pd.DataFrame) -> pd.DataFrame:
@@ -154,30 +182,54 @@ def calculate_buy_volume(df: pd.DataFrame, window: int) -> pd.Series:
     return pd.Series([0.0] * len(df), index=df.index)
 
 
-def filter_pools(df: pd.DataFrame, min_data_points: int = 100) -> Dict[str, pd.DataFrame]:
+def filter_pools(pools, min_data_points=100):
     """
-    Filter and group pools with sufficient data.
+    Filter pools based on minimum number of data points.
 
     Args:
-        df: DataFrame containing market data for multiple pools
-        min_data_points: Minimum number of data points required for a pool
+        pools: Dict of DataFrames or a single DataFrame with 'pool_address' or 'poolAddress' column
+        min_data_points: Minimum number of data points required per pool
 
     Returns:
-        Dictionary of DataFrames grouped by pool address
+        Dict of filtered pool DataFrames
     """
     logger.info(f"Filtering pools with minimum {min_data_points} data points")
 
-    # Group by pool address
-    grouped = df.groupby("poolAddress")
+    filtered_pools = {}
 
-    # Filter pools with sufficient data
-    valid_pools = {}
-    for pool_addr, pool_df in grouped:
-        if len(pool_df) >= min_data_points:
-            valid_pools[pool_addr] = pool_df.copy()
-            logger.debug(f"Pool {pool_addr} passed filter with {len(pool_df)} data points")
+    # Handle case where input is a dict of DataFrames
+    if isinstance(pools, dict):
+        for pool_id, pool_df in pools.items():
+            if len(pool_df) >= min_data_points:
+                filtered_pools[pool_id] = pool_df
+            else:
+                logger.debug(f"Pool {pool_id} filtered out: only {len(pool_df)} data points")
+
+        return filtered_pools
+
+    # Handle case where input is a single DataFrame
+    elif isinstance(pools, pd.DataFrame):
+        # Check which column name is used
+        pool_col = None
+        if "pool_address" in pools.columns:
+            pool_col = "pool_address"
+        elif "poolAddress" in pools.columns:
+            pool_col = "poolAddress"
         else:
-            logger.debug(f"Pool {pool_addr} filtered out with only {len(pool_df)} data points")
+            logger.error("No pool address column found in DataFrame")
+            return {}
 
-    logger.info(f"Retained {len(valid_pools)} pools out of {len(grouped)} after filtering")
-    return valid_pools
+        # Group by pool address
+        grouped = pools.groupby(pool_col)
+
+        for pool_id, group in grouped:
+            if len(group) >= min_data_points:
+                filtered_pools[pool_id] = group
+            else:
+                logger.debug(f"Pool {pool_id} filtered out: only {len(group)} data points")
+
+        return filtered_pools
+
+    else:
+        logger.error(f"Unsupported input type: {type(pools)}")
+        return {}

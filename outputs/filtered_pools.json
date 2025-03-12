@@ -1,0 +1,362 @@
+[
+  {
+    "pool_id": "13UufXw2zaq4ffE16dcYhsCc6ZdxXXV5EwNq4mRJuT8F",
+    "time_span_minutes": 20.2849,
+    "data_points": 1000,
+    "points_per_minute": 49.29775350137294
+  },
+  {
+    "pool_id": "2HBeuiJRNgcoACEHSicHWpEYTfrMgXCbr8mbMfTZXdAT",
+    "time_span_minutes": 20.00041666666667,
+    "data_points": 954,
+    "points_per_minute": 47.69900627070269
+  },
+  {
+    "pool_id": "28gUVEq49NhDQ762ARrMe9QroGDgiY9zhMkVXVFLWtVu",
+    "time_span_minutes": 19.852066666666666,
+    "data_points": 1000,
+    "points_per_minute": 50.37258925183273
+  },
+  {
+    "pool_id": "14rZZtTzzwxxoX18W2BuLKUnXwQMAwRqEUQnhgE8Gtyy",
+    "time_span_minutes": 19.708750000000002,
+    "data_points": 1000,
+    "points_per_minute": 50.738885013001834
+  },
+  {
+    "pool_id": "2A7zg1Y3TRdLokVbvzjdqGpKZsowTxi7eHyRF9qQxsCw",
+    "time_span_minutes": 19.506083333333333,
+    "data_points": 1000,
+    "points_per_minute": 51.266058024633345
+  },
+  {
+    "pool_id": "2NSJzDXiUQuRU3xG1d1TKcdfWJRK3FZMe18YDAAkyVDU",
+    "time_span_minutes": 18.718766666666667,
+    "data_points": 1000,
+    "points_per_minute": 53.42232305191047
+  },
+  {
+    "pool_id": "26oZzLjPiGAH5xvwPj39DhmuCDycUAPEos2fewuAeFU5",
+    "time_span_minutes": 18.520683333333334,
+    "data_points": 1000,
+    "points_per_minute": 53.99368813785668
+  },
+  {
+    "pool_id": "22WXWaztSRyyAHTKu2yf3LJA2mp5QCz3YAeiiFrh3J2a",
+    "time_span_minutes": 18.129483333333333,
+    "data_points": 1000,
+    "points_per_minute": 55.158769922658216
+  },
+  {
+    "pool_id": "2ETe6M7DTFVwkoetPgXwYwpC515ZNbh4rh5oMNYqhFCu",
+    "time_span_minutes": 17.78891666666667,
+    "data_points": 1000,
+    "points_per_minute": 56.214777928204356
+  },
+  {
+    "pool_id": "2LFBsrZMWtYGvhhn2Vphs7qmaqSmG9SfCjsGvBeBmJvZ",
+    "time_span_minutes": 17.66425,
+    "data_points": 1000,
+    "points_per_minute": 56.61151761325842
+  },
+  {
+    "pool_id": "2JdY6z48khGTtwMaCgcNN2CDPqkkE67ngasSsGS6xTyN",
+    "time_span_minutes": 17.372783333333334,
+    "data_points": 1000,
+    "points_per_minute": 57.56130038652413
+  },
+  {
+    "pool_id": "12ku9hUWjaWum6mrAL3KeY3N1RPva5GcmdYsLPP1Tut4",
+    "time_span_minutes": 17.307466666666667,
+    "data_points": 1000,
+    "points_per_minute": 57.77853103862687
+  },
+  {
+    "pool_id": "2B1Fh2X3rTQw8Whjq8FQvHAenzyfAG3vvHLopdt6Gaud",
+    "time_span_minutes": 17.14705,
+    "data_points": 1000,
+    "points_per_minute": 58.31906946092768
+  },
+  {
+    "pool_id": "2JhkZXrfYMFBZNFQSQPnNmiv4aeu7BM6bGXs4dZGQDsk",
+    "time_span_minutes": 17.104233333333333,
+    "data_points": 1000,
+    "points_per_minute": 58.465058357872415
+  },
+  {
+    "pool_id": "12QspooeZFsA4d41KtLz4p3e8YyLzPxG4bShsUCBbEgU",
+    "time_span_minutes": 17.102916666666665,
+    "data_points": 1000,
+    "points_per_minute": 58.46955928569689
+  },
+  {
+    "pool_id": "26U2kSoMvUmi2VNfRGPiavJBexfCLkxNfTAZt88WcfnW",
+    "time_span_minutes": 16.979133333333333,
+    "data_points": 1000,
+    "points_per_minute": 58.895821145170345
+  },
+  {
+    "pool_id": "22ZVXW1o46n5hCZ7LHdKL3UjJYWeZ4eWhknSuNU6L16V",
+    "time_span_minutes": 16.933666666666667,
+    "data_points": 1000,
+    "points_per_minute": 59.05395563079467
+  },
+  {
+    "pool_id": "2MZTiTbDZZ1xiscPkQU4uJdANFbLTYpXf3QcaCefn5Zw",
+    "time_span_minutes": 16.874583333333334,
+    "data_points": 1000,
+    "points_per_minute": 59.260722486974984
+  },
+  {
+    "pool_id": "2EucoPwWTC3djUkH7U1cAJQ6XvPPg1mgeeAd7AiDscGK",
+    "time_span_minutes": 16.82453333333333,
+    "data_points": 1000,
+    "points_per_minute": 59.43701261649655
+  },
+  {
+    "pool_id": "2GDDmxCdFmcs16c9QjAYSVEA8vc75tFZu7rv3VrW9YdJ",
+    "time_span_minutes": 16.82125,
+    "data_points": 1000,
+    "points_per_minute": 59.4486141041837
+  },
+  {
+    "pool_id": "2MmsEVE5g8xVAsMgsGnCqE348y89Vsw2bsGs4XA42SJx",
+    "time_span_minutes": 16.8081,
+    "data_points": 1000,
+    "points_per_minute": 59.495124374557506
+  },
+  {
+    "pool_id": "21y4tUztpkdwFk3tTeEJvheYmYBrAouQCSfFDZX87JwD",
+    "time_span_minutes": 16.805666666666667,
+    "data_points": 1000,
+    "points_per_minute": 59.50373881825575
+  },
+  {
+    "pool_id": "2AsWMvpFTg8Ka3c8i8tSwMFkBpVe7awrGZu9M4KwXWBH",
+    "time_span_minutes": 16.796566666666667,
+    "data_points": 1000,
+    "points_per_minute": 59.53597659839213
+  },
+  {
+    "pool_id": "24toB9K7gCJCNsPF5T6W7AQwXsznBsasemjHWnoBMrWw",
+    "time_span_minutes": 16.7479,
+    "data_points": 1000,
+    "points_per_minute": 59.70897843908788
+  },
+  {
+    "pool_id": "2Fbk2JkHksfBGryuTA6S6L8CVdqmqAQWZVEuvMcqijQs",
+    "time_span_minutes": 16.74125,
+    "data_points": 1000,
+    "points_per_minute": 59.73269618457403
+  },
+  {
+    "pool_id": "2Jo8zfiTN8ABzTBz3RoxSvfsWRkrxnkyQpQ5movkUBuq",
+    "time_span_minutes": 16.741,
+    "data_points": 1000,
+    "points_per_minute": 59.73358819664298
+  },
+  {
+    "pool_id": "2Hr9ozHQjkRxZTz5pXFVtsYTSYcfhbJ5NiZAU9NnFmrc",
+    "time_span_minutes": 16.729333333333333,
+    "data_points": 1000,
+    "points_per_minute": 59.775245078504824
+  },
+  {
+    "pool_id": "27dTajp8Y65REwzuKHoBVRooNg3wfk2N3UVn2cATmCTC",
+    "time_span_minutes": 16.718516666666666,
+    "data_points": 1000,
+    "points_per_minute": 59.81391889830737
+  },
+  {
+    "pool_id": "14ski1dVbGpJFWv95ZjbmD99pHmh2atq5FjQu7WRVvJm",
+    "time_span_minutes": 16.708266666666667,
+    "data_points": 1000,
+    "points_per_minute": 59.85061287027579
+  },
+  {
+    "pool_id": "13CBYnDE9H6dsVFqWiCKsEVTVUBPvAALC7ZrBUdrcHqm",
+    "time_span_minutes": 16.70723333333333,
+    "data_points": 1000,
+    "points_per_minute": 59.85431459826783
+  },
+  {
+    "pool_id": "241cV46pieKtzfVhXV6us47BCoYc7R4HfejgdTZsXrdu",
+    "time_span_minutes": 16.706166666666668,
+    "data_points": 1000,
+    "points_per_minute": 59.85813621716531
+  },
+  {
+    "pool_id": "2CCjwBiFa5HSfaVXK7tdWFg9uusCjswLjFxrgG3jJnjV",
+    "time_span_minutes": 16.704283333333333,
+    "data_points": 1000,
+    "points_per_minute": 59.86488495465734
+  },
+  {
+    "pool_id": "2KN7kjG5VdeeV2a4m2LJZN25zmujj9fEKQ8YEFQ2QafB",
+    "time_span_minutes": 16.702966666666665,
+    "data_points": 1000,
+    "points_per_minute": 59.869604002482596
+  },
+  {
+    "pool_id": "23zosUavsd9YkscbumradZER4JyqhLHVy24zBL1XbjCy",
+    "time_span_minutes": 16.69855,
+    "data_points": 1000,
+    "points_per_minute": 59.88543915489668
+  },
+  {
+    "pool_id": "2CjR6rmLB6ehFqa54poq22acCQjvUmq1Zr6M1bMWVdc9",
+    "time_span_minutes": 16.69335,
+    "data_points": 1000,
+    "points_per_minute": 59.90409354623249
+  },
+  {
+    "pool_id": "2DPQeErjsu9QDrSi1A5k9XB1YNxYJsi15iZBGzbPTN78",
+    "time_span_minutes": 16.6931,
+    "data_points": 1000,
+    "points_per_minute": 59.90499068477394
+  },
+  {
+    "pool_id": "2Lfvktt4y99Ly2xmTpEVhgdnvAFfXGTEy1Zx8wi9v2R8",
+    "time_span_minutes": 16.690350000000002,
+    "data_points": 1000,
+    "points_per_minute": 59.9148609825438
+  },
+  {
+    "pool_id": "2CCn9UJKrUu9y1HUW74PNngTSYhVJaQywtu33tdbiXz7",
+    "time_span_minutes": 16.682949999999998,
+    "data_points": 1000,
+    "points_per_minute": 59.94143721584013
+  },
+  {
+    "pool_id": "26h9HaXhuLhJzNP68YMXKxFXhHV4i9XYM4xGx2pCAs4X",
+    "time_span_minutes": 16.678216666666668,
+    "data_points": 1000,
+    "points_per_minute": 59.958448794985074
+  },
+  {
+    "pool_id": "26aNgGGWuDSBeS1iNVTVhbWprfs7jRzFfcj78kHVDaa8",
+    "time_span_minutes": 16.673033333333333,
+    "data_points": 1000,
+    "points_per_minute": 59.9770887520967
+  },
+  {
+    "pool_id": "2CnsgLtuNfgGKzPXK1Wtk8jUHhcor5D4eLZY6pT39wpw",
+    "time_span_minutes": 16.6579,
+    "data_points": 1000,
+    "points_per_minute": 60.031576609296486
+  },
+  {
+    "pool_id": "2FFNHjgT22Jpgh32Q2uAH9ZtucbxAqwRp5fYTJzuafMa",
+    "time_span_minutes": 16.65455,
+    "data_points": 1000,
+    "points_per_minute": 60.043651734811206
+  },
+  {
+    "pool_id": "21xKHbq65nPWYQYS5o3kXrfU9A7TgCwfLP8Cu9tPNP8o",
+    "time_span_minutes": 16.097516666666667,
+    "data_points": 786,
+    "points_per_minute": 48.82740712594386
+  },
+  {
+    "pool_id": "2HypFgyJyWkwHnTvWqU6hRwhnuPGRnAQzdL32jJSwceZ",
+    "time_span_minutes": 15.9434,
+    "data_points": 883,
+    "points_per_minute": 55.38341884416122
+  },
+  {
+    "pool_id": "2AzRLVp1wb8eohVEeJS2iAYVWZpQAfcSARdRSGx9HCxT",
+    "time_span_minutes": 15.931533333333334,
+    "data_points": 771,
+    "points_per_minute": 48.39458850999903
+  },
+  {
+    "pool_id": "26BcYnQcUxCpesk83wMeJs18s9BectD2T36aJDZaxHHQ",
+    "time_span_minutes": 15.742916666666668,
+    "data_points": 855,
+    "points_per_minute": 54.31013948071884
+  },
+  {
+    "pool_id": "12YyqbMeNdmdqh29k17zHF3MagzKuTDySKZwyUnwfzVx",
+    "time_span_minutes": 15.225533333333335,
+    "data_points": 913,
+    "points_per_minute": 59.9650586952619
+  },
+  {
+    "pool_id": "2C9hMX4dD7BjsigrmBgeEUu5a8PLfwBaDezMeM7F9L7M",
+    "time_span_minutes": 15.15215,
+    "data_points": 910,
+    "points_per_minute": 60.05748359143752
+  },
+  {
+    "pool_id": "2Nf5T9g6eaS5vaAdUHQZg3ScB5whF9V9fM3YCZX5bLUa",
+    "time_span_minutes": 15.046983333333333,
+    "data_points": 854,
+    "points_per_minute": 56.75556229986299
+  },
+  {
+    "pool_id": "2JuyH3rKFx1KGhRCf6gerdciCixWyKbukbg1g2QEpuf2",
+    "time_span_minutes": 14.869783333333334,
+    "data_points": 876,
+    "points_per_minute": 58.91141655280787
+  },
+  {
+    "pool_id": "2FGqVvEo9wWv6BaRf1jvPvKEjC9XHFGNfrT1DQuPy4hS",
+    "time_span_minutes": 14.819916666666668,
+    "data_points": 882,
+    "points_per_minute": 59.514504692446536
+  },
+  {
+    "pool_id": "2KENCCrJigfVCrAEPt73aACgsztfGdgYf5Urr7kewLmC",
+    "time_span_minutes": 14.5152,
+    "data_points": 868,
+    "points_per_minute": 59.79938271604938
+  },
+  {
+    "pool_id": "26mWdwYysMuTCF9BJGJnF8aFQ9MguhSejxnpPm2xh1xs",
+    "time_span_minutes": 12.551816666666667,
+    "data_points": 613,
+    "points_per_minute": 48.837552067496205
+  },
+  {
+    "pool_id": "24pHSsn1RNgVwZugHzFAGJMzD6kvraKxJMAJjutpeYUj",
+    "time_span_minutes": 11.301166666666667,
+    "data_points": 647,
+    "points_per_minute": 57.25072632619051
+  },
+  {
+    "pool_id": "22CAFtTjoagBGUTBrFd2JKnEKoqptYjmQZyyhMN5bhJK",
+    "time_span_minutes": 11.1476,
+    "data_points": 664,
+    "points_per_minute": 59.56439054146183
+  },
+  {
+    "pool_id": "26uMXG2oD9VvnQVBE6j1j2AgKMrvSfNzSjyNcxiX1NXS",
+    "time_span_minutes": 10.841299999999999,
+    "data_points": 649,
+    "points_per_minute": 59.86366948613175
+  },
+  {
+    "pool_id": "13z1XPb2RLFG5qwGLSq67uKJhwcvhahAB2FDvJm6xwoG",
+    "time_span_minutes": 10.365183333333333,
+    "data_points": 541,
+    "points_per_minute": 52.193963444930226
+  },
+  {
+    "pool_id": "2EFzL2nemnKrcu8TSTQPRez6uyBiJCVU6mAfPNnfEhvc",
+    "time_span_minutes": 10.140383333333334,
+    "data_points": 524,
+    "points_per_minute": 51.67457509002782
+  },
+  {
+    "pool_id": "2JsM1juL6bPx41EJweqTpMyeChv6wzTqQ79mc8MVy8Zq",
+    "time_span_minutes": 10.120616666666667,
+    "data_points": 603,
+    "points_per_minute": 59.58134962131754
+  },
+  {
+    "pool_id": "12qbvNxwtXahXwCumrne6qCikF9fMcrAyDmq2G9LQETY",
+    "time_span_minutes": 10.09115,
+    "data_points": 497,
+    "points_per_minute": 49.25107643826521
+  }
+]

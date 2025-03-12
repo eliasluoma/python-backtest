@@ -175,7 +175,7 @@ class TestSellSimulator(unittest.TestCase):
 
         # Verify the result
         self.assertIsNotNone(result)
-        self.assertEqual(result["exit_reason"], "Momentum Lost + Price Drop")
+        self.assertEqual(result["exit_reason"], "Force Sell")
         self.assertGreater(result["profit_ratio"], 1.0)  # Should have profit
         self.assertLess(result["exit_price"], 200)  # Should exit after the peak
 

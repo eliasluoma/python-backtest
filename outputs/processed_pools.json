@@ -1,0 +1,302 @@
+[
+  {
+    "pool_id": "13UufXw2zaq4ffE16dcYhsCc6ZdxXXV5EwNq4mRJuT8F",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/13UufXw2zaq4ffE16dcYhsCc6ZdxXXV5EwNq4mRJuT8F.csv"
+  },
+  {
+    "pool_id": "2HBeuiJRNgcoACEHSicHWpEYTfrMgXCbr8mbMfTZXdAT",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2HBeuiJRNgcoACEHSicHWpEYTfrMgXCbr8mbMfTZXdAT.csv"
+  },
+  {
+    "pool_id": "28gUVEq49NhDQ762ARrMe9QroGDgiY9zhMkVXVFLWtVu",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/28gUVEq49NhDQ762ARrMe9QroGDgiY9zhMkVXVFLWtVu.csv"
+  },
+  {
+    "pool_id": "14rZZtTzzwxxoX18W2BuLKUnXwQMAwRqEUQnhgE8Gtyy",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/14rZZtTzzwxxoX18W2BuLKUnXwQMAwRqEUQnhgE8Gtyy.csv"
+  },
+  {
+    "pool_id": "2A7zg1Y3TRdLokVbvzjdqGpKZsowTxi7eHyRF9qQxsCw",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2A7zg1Y3TRdLokVbvzjdqGpKZsowTxi7eHyRF9qQxsCw.csv"
+  },
+  {
+    "pool_id": "2NSJzDXiUQuRU3xG1d1TKcdfWJRK3FZMe18YDAAkyVDU",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2NSJzDXiUQuRU3xG1d1TKcdfWJRK3FZMe18YDAAkyVDU.csv"
+  },
+  {
+    "pool_id": "26oZzLjPiGAH5xvwPj39DhmuCDycUAPEos2fewuAeFU5",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/26oZzLjPiGAH5xvwPj39DhmuCDycUAPEos2fewuAeFU5.csv"
+  },
+  {
+    "pool_id": "22WXWaztSRyyAHTKu2yf3LJA2mp5QCz3YAeiiFrh3J2a",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/22WXWaztSRyyAHTKu2yf3LJA2mp5QCz3YAeiiFrh3J2a.csv"
+  },
+  {
+    "pool_id": "2ETe6M7DTFVwkoetPgXwYwpC515ZNbh4rh5oMNYqhFCu",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2ETe6M7DTFVwkoetPgXwYwpC515ZNbh4rh5oMNYqhFCu.csv"
+  },
+  {
+    "pool_id": "2LFBsrZMWtYGvhhn2Vphs7qmaqSmG9SfCjsGvBeBmJvZ",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2LFBsrZMWtYGvhhn2Vphs7qmaqSmG9SfCjsGvBeBmJvZ.csv"
+  },
+  {
+    "pool_id": "2JdY6z48khGTtwMaCgcNN2CDPqkkE67ngasSsGS6xTyN",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2JdY6z48khGTtwMaCgcNN2CDPqkkE67ngasSsGS6xTyN.csv"
+  },
+  {
+    "pool_id": "12ku9hUWjaWum6mrAL3KeY3N1RPva5GcmdYsLPP1Tut4",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/12ku9hUWjaWum6mrAL3KeY3N1RPva5GcmdYsLPP1Tut4.csv"
+  },
+  {
+    "pool_id": "2B1Fh2X3rTQw8Whjq8FQvHAenzyfAG3vvHLopdt6Gaud",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2B1Fh2X3rTQw8Whjq8FQvHAenzyfAG3vvHLopdt6Gaud.csv"
+  },
+  {
+    "pool_id": "2JhkZXrfYMFBZNFQSQPnNmiv4aeu7BM6bGXs4dZGQDsk",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2JhkZXrfYMFBZNFQSQPnNmiv4aeu7BM6bGXs4dZGQDsk.csv"
+  },
+  {
+    "pool_id": "12QspooeZFsA4d41KtLz4p3e8YyLzPxG4bShsUCBbEgU",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/12QspooeZFsA4d41KtLz4p3e8YyLzPxG4bShsUCBbEgU.csv"
+  },
+  {
+    "pool_id": "26U2kSoMvUmi2VNfRGPiavJBexfCLkxNfTAZt88WcfnW",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/26U2kSoMvUmi2VNfRGPiavJBexfCLkxNfTAZt88WcfnW.csv"
+  },
+  {
+    "pool_id": "22ZVXW1o46n5hCZ7LHdKL3UjJYWeZ4eWhknSuNU6L16V",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/22ZVXW1o46n5hCZ7LHdKL3UjJYWeZ4eWhknSuNU6L16V.csv"
+  },
+  {
+    "pool_id": "2MZTiTbDZZ1xiscPkQU4uJdANFbLTYpXf3QcaCefn5Zw",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2MZTiTbDZZ1xiscPkQU4uJdANFbLTYpXf3QcaCefn5Zw.csv"
+  },
+  {
+    "pool_id": "2EucoPwWTC3djUkH7U1cAJQ6XvPPg1mgeeAd7AiDscGK",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2EucoPwWTC3djUkH7U1cAJQ6XvPPg1mgeeAd7AiDscGK.csv"
+  },
+  {
+    "pool_id": "2GDDmxCdFmcs16c9QjAYSVEA8vc75tFZu7rv3VrW9YdJ",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2GDDmxCdFmcs16c9QjAYSVEA8vc75tFZu7rv3VrW9YdJ.csv"
+  },
+  {
+    "pool_id": "2MmsEVE5g8xVAsMgsGnCqE348y89Vsw2bsGs4XA42SJx",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2MmsEVE5g8xVAsMgsGnCqE348y89Vsw2bsGs4XA42SJx.csv"
+  },
+  {
+    "pool_id": "21y4tUztpkdwFk3tTeEJvheYmYBrAouQCSfFDZX87JwD",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/21y4tUztpkdwFk3tTeEJvheYmYBrAouQCSfFDZX87JwD.csv"
+  },
+  {
+    "pool_id": "2AsWMvpFTg8Ka3c8i8tSwMFkBpVe7awrGZu9M4KwXWBH",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2AsWMvpFTg8Ka3c8i8tSwMFkBpVe7awrGZu9M4KwXWBH.csv"
+  },
+  {
+    "pool_id": "24toB9K7gCJCNsPF5T6W7AQwXsznBsasemjHWnoBMrWw",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/24toB9K7gCJCNsPF5T6W7AQwXsznBsasemjHWnoBMrWw.csv"
+  },
+  {
+    "pool_id": "2Fbk2JkHksfBGryuTA6S6L8CVdqmqAQWZVEuvMcqijQs",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2Fbk2JkHksfBGryuTA6S6L8CVdqmqAQWZVEuvMcqijQs.csv"
+  },
+  {
+    "pool_id": "2Jo8zfiTN8ABzTBz3RoxSvfsWRkrxnkyQpQ5movkUBuq",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2Jo8zfiTN8ABzTBz3RoxSvfsWRkrxnkyQpQ5movkUBuq.csv"
+  },
+  {
+    "pool_id": "2Hr9ozHQjkRxZTz5pXFVtsYTSYcfhbJ5NiZAU9NnFmrc",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2Hr9ozHQjkRxZTz5pXFVtsYTSYcfhbJ5NiZAU9NnFmrc.csv"
+  },
+  {
+    "pool_id": "27dTajp8Y65REwzuKHoBVRooNg3wfk2N3UVn2cATmCTC",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/27dTajp8Y65REwzuKHoBVRooNg3wfk2N3UVn2cATmCTC.csv"
+  },
+  {
+    "pool_id": "14ski1dVbGpJFWv95ZjbmD99pHmh2atq5FjQu7WRVvJm",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/14ski1dVbGpJFWv95ZjbmD99pHmh2atq5FjQu7WRVvJm.csv"
+  },
+  {
+    "pool_id": "13CBYnDE9H6dsVFqWiCKsEVTVUBPvAALC7ZrBUdrcHqm",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/13CBYnDE9H6dsVFqWiCKsEVTVUBPvAALC7ZrBUdrcHqm.csv"
+  },
+  {
+    "pool_id": "241cV46pieKtzfVhXV6us47BCoYc7R4HfejgdTZsXrdu",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/241cV46pieKtzfVhXV6us47BCoYc7R4HfejgdTZsXrdu.csv"
+  },
+  {
+    "pool_id": "2CCjwBiFa5HSfaVXK7tdWFg9uusCjswLjFxrgG3jJnjV",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2CCjwBiFa5HSfaVXK7tdWFg9uusCjswLjFxrgG3jJnjV.csv"
+  },
+  {
+    "pool_id": "2KN7kjG5VdeeV2a4m2LJZN25zmujj9fEKQ8YEFQ2QafB",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2KN7kjG5VdeeV2a4m2LJZN25zmujj9fEKQ8YEFQ2QafB.csv"
+  },
+  {
+    "pool_id": "23zosUavsd9YkscbumradZER4JyqhLHVy24zBL1XbjCy",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/23zosUavsd9YkscbumradZER4JyqhLHVy24zBL1XbjCy.csv"
+  },
+  {
+    "pool_id": "2CjR6rmLB6ehFqa54poq22acCQjvUmq1Zr6M1bMWVdc9",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2CjR6rmLB6ehFqa54poq22acCQjvUmq1Zr6M1bMWVdc9.csv"
+  },
+  {
+    "pool_id": "2DPQeErjsu9QDrSi1A5k9XB1YNxYJsi15iZBGzbPTN78",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2DPQeErjsu9QDrSi1A5k9XB1YNxYJsi15iZBGzbPTN78.csv"
+  },
+  {
+    "pool_id": "2Lfvktt4y99Ly2xmTpEVhgdnvAFfXGTEy1Zx8wi9v2R8",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2Lfvktt4y99Ly2xmTpEVhgdnvAFfXGTEy1Zx8wi9v2R8.csv"
+  },
+  {
+    "pool_id": "2CCn9UJKrUu9y1HUW74PNngTSYhVJaQywtu33tdbiXz7",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2CCn9UJKrUu9y1HUW74PNngTSYhVJaQywtu33tdbiXz7.csv"
+  },
+  {
+    "pool_id": "26h9HaXhuLhJzNP68YMXKxFXhHV4i9XYM4xGx2pCAs4X",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/26h9HaXhuLhJzNP68YMXKxFXhHV4i9XYM4xGx2pCAs4X.csv"
+  },
+  {
+    "pool_id": "26aNgGGWuDSBeS1iNVTVhbWprfs7jRzFfcj78kHVDaa8",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/26aNgGGWuDSBeS1iNVTVhbWprfs7jRzFfcj78kHVDaa8.csv"
+  },
+  {
+    "pool_id": "2CnsgLtuNfgGKzPXK1Wtk8jUHhcor5D4eLZY6pT39wpw",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2CnsgLtuNfgGKzPXK1Wtk8jUHhcor5D4eLZY6pT39wpw.csv"
+  },
+  {
+    "pool_id": "2FFNHjgT22Jpgh32Q2uAH9ZtucbxAqwRp5fYTJzuafMa",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2FFNHjgT22Jpgh32Q2uAH9ZtucbxAqwRp5fYTJzuafMa.csv"
+  },
+  {
+    "pool_id": "21xKHbq65nPWYQYS5o3kXrfU9A7TgCwfLP8Cu9tPNP8o",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/21xKHbq65nPWYQYS5o3kXrfU9A7TgCwfLP8Cu9tPNP8o.csv"
+  },
+  {
+    "pool_id": "2HypFgyJyWkwHnTvWqU6hRwhnuPGRnAQzdL32jJSwceZ",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2HypFgyJyWkwHnTvWqU6hRwhnuPGRnAQzdL32jJSwceZ.csv"
+  },
+  {
+    "pool_id": "2AzRLVp1wb8eohVEeJS2iAYVWZpQAfcSARdRSGx9HCxT",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2AzRLVp1wb8eohVEeJS2iAYVWZpQAfcSARdRSGx9HCxT.csv"
+  },
+  {
+    "pool_id": "26BcYnQcUxCpesk83wMeJs18s9BectD2T36aJDZaxHHQ",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/26BcYnQcUxCpesk83wMeJs18s9BectD2T36aJDZaxHHQ.csv"
+  },
+  {
+    "pool_id": "12YyqbMeNdmdqh29k17zHF3MagzKuTDySKZwyUnwfzVx",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/12YyqbMeNdmdqh29k17zHF3MagzKuTDySKZwyUnwfzVx.csv"
+  },
+  {
+    "pool_id": "2C9hMX4dD7BjsigrmBgeEUu5a8PLfwBaDezMeM7F9L7M",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2C9hMX4dD7BjsigrmBgeEUu5a8PLfwBaDezMeM7F9L7M.csv"
+  },
+  {
+    "pool_id": "2Nf5T9g6eaS5vaAdUHQZg3ScB5whF9V9fM3YCZX5bLUa",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2Nf5T9g6eaS5vaAdUHQZg3ScB5whF9V9fM3YCZX5bLUa.csv"
+  },
+  {
+    "pool_id": "2JuyH3rKFx1KGhRCf6gerdciCixWyKbukbg1g2QEpuf2",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2JuyH3rKFx1KGhRCf6gerdciCixWyKbukbg1g2QEpuf2.csv"
+  },
+  {
+    "pool_id": "2FGqVvEo9wWv6BaRf1jvPvKEjC9XHFGNfrT1DQuPy4hS",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2FGqVvEo9wWv6BaRf1jvPvKEjC9XHFGNfrT1DQuPy4hS.csv"
+  },
+  {
+    "pool_id": "2KENCCrJigfVCrAEPt73aACgsztfGdgYf5Urr7kewLmC",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2KENCCrJigfVCrAEPt73aACgsztfGdgYf5Urr7kewLmC.csv"
+  },
+  {
+    "pool_id": "26mWdwYysMuTCF9BJGJnF8aFQ9MguhSejxnpPm2xh1xs",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/26mWdwYysMuTCF9BJGJnF8aFQ9MguhSejxnpPm2xh1xs.csv"
+  },
+  {
+    "pool_id": "24pHSsn1RNgVwZugHzFAGJMzD6kvraKxJMAJjutpeYUj",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/24pHSsn1RNgVwZugHzFAGJMzD6kvraKxJMAJjutpeYUj.csv"
+  },
+  {
+    "pool_id": "22CAFtTjoagBGUTBrFd2JKnEKoqptYjmQZyyhMN5bhJK",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/22CAFtTjoagBGUTBrFd2JKnEKoqptYjmQZyyhMN5bhJK.csv"
+  },
+  {
+    "pool_id": "26uMXG2oD9VvnQVBE6j1j2AgKMrvSfNzSjyNcxiX1NXS",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/26uMXG2oD9VvnQVBE6j1j2AgKMrvSfNzSjyNcxiX1NXS.csv"
+  },
+  {
+    "pool_id": "13z1XPb2RLFG5qwGLSq67uKJhwcvhahAB2FDvJm6xwoG",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/13z1XPb2RLFG5qwGLSq67uKJhwcvhahAB2FDvJm6xwoG.csv"
+  },
+  {
+    "pool_id": "2EFzL2nemnKrcu8TSTQPRez6uyBiJCVU6mAfPNnfEhvc",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2EFzL2nemnKrcu8TSTQPRez6uyBiJCVU6mAfPNnfEhvc.csv"
+  },
+  {
+    "pool_id": "2JsM1juL6bPx41EJweqTpMyeChv6wzTqQ79mc8MVy8Zq",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/2JsM1juL6bPx41EJweqTpMyeChv6wzTqQ79mc8MVy8Zq.csv"
+  },
+  {
+    "pool_id": "12qbvNxwtXahXwCumrne6qCikF9fMcrAyDmq2G9LQETY",
+    "rows": 100,
+    "file_path": "/Users/eliasluoma/python-backtest/outputs/processed_pools/12qbvNxwtXahXwCumrne6qCikF9fMcrAyDmq2G9LQETY.csv"
+  }
+]
