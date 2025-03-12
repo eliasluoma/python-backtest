@@ -25,6 +25,7 @@ def initialize_firebase():
 
                 # Try common locations
                 common_locations = [
+                    "firebase-key.json",  # Juurihakemistossa oleva avaintiedosto
                     "credentials/firebase-credentials.json",  # Preferred location within credentials directory
                     os.path.expanduser("~/.config/firebase-credentials.json"),  # User config directory
                     "/etc/firebase-credentials.json",  # System-wide location
@@ -205,32 +206,85 @@ def extract_nested_fields(df):
                 return default
         return current
 
-    # Define nested fields to extract
+    # Define nested fields to extract with both naming conventions
     nested_fields = [
-        ("tradeLast5Seconds.volume.buy", ["tradeLast5Seconds", "volume", "buy"]),
-        ("tradeLast5Seconds.volume.sell", ["tradeLast5Seconds", "volume", "sell"]),
-        ("tradeLast5Seconds.tradeCount.buy.large", ["tradeLast5Seconds", "tradeCount", "buy", "large"]),
-        ("tradeLast5Seconds.tradeCount.buy.medium", ["tradeLast5Seconds", "tradeCount", "buy", "medium"]),
-        ("tradeLast5Seconds.tradeCount.buy.super", ["tradeLast5Seconds", "tradeCount", "buy", "super"]),
-        ("tradeLast5Seconds.tradeCount.buy.small", ["tradeLast5Seconds", "tradeCount", "buy", "small"]),
-        ("tradeLast5Seconds.tradeCount.sell.large", ["tradeLast5Seconds", "tradeCount", "sell", "large"]),
-        ("tradeLast5Seconds.tradeCount.sell.medium", ["tradeLast5Seconds", "tradeCount", "sell", "medium"]),
-        ("tradeLast5Seconds.tradeCount.sell.super", ["tradeLast5Seconds", "tradeCount", "sell", "super"]),
-        ("tradeLast5Seconds.tradeCount.sell.small", ["tradeLast5Seconds", "tradeCount", "sell", "small"]),
-        # Alternative naming with underscore
+        # CamelCase muoto (tradeLast5Seconds)
+        ("trade_last5Seconds.volume.buy", ["tradeLast5Seconds", "volume", "buy"]),
+        ("trade_last5Seconds.volume.sell", ["tradeLast5Seconds", "volume", "sell"]),
+        ("trade_last5Seconds.volume.bot", ["tradeLast5Seconds", "volume", "bot"]),
+        ("trade_last5Seconds.tradeCount.buy.small", ["tradeLast5Seconds", "tradeCount", "buy", "small"]),
+        ("trade_last5Seconds.tradeCount.buy.medium", ["tradeLast5Seconds", "tradeCount", "buy", "medium"]),
+        ("trade_last5Seconds.tradeCount.buy.large", ["tradeLast5Seconds", "tradeCount", "buy", "large"]),
+        ("trade_last5Seconds.tradeCount.buy.big", ["tradeLast5Seconds", "tradeCount", "buy", "big"]),
+        ("trade_last5Seconds.tradeCount.buy.super", ["tradeLast5Seconds", "tradeCount", "buy", "super"]),
+        ("trade_last5Seconds.tradeCount.sell.small", ["tradeLast5Seconds", "tradeCount", "sell", "small"]),
+        ("trade_last5Seconds.tradeCount.sell.medium", ["tradeLast5Seconds", "tradeCount", "sell", "medium"]),
+        ("trade_last5Seconds.tradeCount.sell.large", ["tradeLast5Seconds", "tradeCount", "sell", "large"]),
+        ("trade_last5Seconds.tradeCount.sell.big", ["tradeLast5Seconds", "tradeCount", "sell", "big"]),
+        ("trade_last5Seconds.tradeCount.sell.super", ["tradeLast5Seconds", "tradeCount", "sell", "super"]),
+        ("trade_last5Seconds.tradeCount.bot", ["tradeLast5Seconds", "tradeCount", "bot"]),
+        
+        # 10s data camelCase
+        ("trade_last10Seconds.volume.buy", ["tradeLast10Seconds", "volume", "buy"]),
+        ("trade_last10Seconds.volume.sell", ["tradeLast10Seconds", "volume", "sell"]),
+        ("trade_last10Seconds.volume.bot", ["tradeLast10Seconds", "volume", "bot"]),
+        ("trade_last10Seconds.tradeCount.buy.small", ["tradeLast10Seconds", "tradeCount", "buy", "small"]),
+        ("trade_last10Seconds.tradeCount.buy.medium", ["tradeLast10Seconds", "tradeCount", "buy", "medium"]),
+        ("trade_last10Seconds.tradeCount.buy.large", ["tradeLast10Seconds", "tradeCount", "buy", "large"]),
+        ("trade_last10Seconds.tradeCount.buy.big", ["tradeLast10Seconds", "tradeCount", "buy", "big"]),
+        ("trade_last10Seconds.tradeCount.buy.super", ["tradeLast10Seconds", "tradeCount", "buy", "super"]),
+        ("trade_last10Seconds.tradeCount.sell.small", ["tradeLast10Seconds", "tradeCount", "sell", "small"]),
+        ("trade_last10Seconds.tradeCount.sell.medium", ["tradeLast10Seconds", "tradeCount", "sell", "medium"]),
+        ("trade_last10Seconds.tradeCount.sell.large", ["tradeLast10Seconds", "tradeCount", "sell", "large"]),
+        ("trade_last10Seconds.tradeCount.sell.big", ["tradeLast10Seconds", "tradeCount", "sell", "big"]),
+        ("trade_last10Seconds.tradeCount.sell.super", ["tradeLast10Seconds", "tradeCount", "sell", "super"]),
+        ("trade_last10Seconds.tradeCount.bot", ["tradeLast10Seconds", "tradeCount", "bot"]),
+        
+        # Snake case muoto (alkuperäiset kentät jätetään ennalleen)
         ("trade_last5Seconds.volume.buy", ["trade_last5Seconds", "volume", "buy"]),
         ("trade_last5Seconds.volume.sell", ["trade_last5Seconds", "volume", "sell"]),
+        ("trade_last5Seconds.volume.bot", ["trade_last5Seconds", "volume", "bot"]),
+        ("trade_last5Seconds.tradeCount.buy.small", ["trade_last5Seconds", "tradeCount", "buy", "small"]),
+        ("trade_last5Seconds.tradeCount.buy.medium", ["trade_last5Seconds", "tradeCount", "buy", "medium"]),
         ("trade_last5Seconds.tradeCount.buy.large", ["trade_last5Seconds", "tradeCount", "buy", "large"]),
+        ("trade_last5Seconds.tradeCount.buy.big", ["trade_last5Seconds", "tradeCount", "buy", "big"]),
+        ("trade_last5Seconds.tradeCount.buy.super", ["trade_last5Seconds", "tradeCount", "buy", "super"]),
+        ("trade_last5Seconds.tradeCount.sell.small", ["trade_last5Seconds", "tradeCount", "sell", "small"]),
+        ("trade_last5Seconds.tradeCount.sell.medium", ["trade_last5Seconds", "tradeCount", "sell", "medium"]),
+        ("trade_last5Seconds.tradeCount.sell.large", ["trade_last5Seconds", "tradeCount", "sell", "large"]),
+        ("trade_last5Seconds.tradeCount.sell.big", ["trade_last5Seconds", "tradeCount", "sell", "big"]),
+        ("trade_last5Seconds.tradeCount.sell.super", ["trade_last5Seconds", "tradeCount", "sell", "super"]),
+        ("trade_last5Seconds.tradeCount.bot", ["trade_last5Seconds", "tradeCount", "bot"]),
+        
+        # 10s data snake_case
+        ("trade_last10Seconds.volume.buy", ["trade_last10Seconds", "volume", "buy"]),
+        ("trade_last10Seconds.volume.sell", ["trade_last10Seconds", "volume", "sell"]),
+        ("trade_last10Seconds.volume.bot", ["trade_last10Seconds", "volume", "bot"]),
+        ("trade_last10Seconds.tradeCount.buy.small", ["trade_last10Seconds", "tradeCount", "buy", "small"]),
+        ("trade_last10Seconds.tradeCount.buy.medium", ["trade_last10Seconds", "tradeCount", "buy", "medium"]),
+        ("trade_last10Seconds.tradeCount.buy.large", ["trade_last10Seconds", "tradeCount", "buy", "large"]),
+        ("trade_last10Seconds.tradeCount.buy.big", ["trade_last10Seconds", "tradeCount", "buy", "big"]),
+        ("trade_last10Seconds.tradeCount.buy.super", ["trade_last10Seconds", "tradeCount", "buy", "super"]),
+        ("trade_last10Seconds.tradeCount.sell.small", ["trade_last10Seconds", "tradeCount", "sell", "small"]),
+        ("trade_last10Seconds.tradeCount.sell.medium", ["trade_last10Seconds", "tradeCount", "sell", "medium"]),
+        ("trade_last10Seconds.tradeCount.sell.large", ["trade_last10Seconds", "tradeCount", "sell", "large"]),
+        ("trade_last10Seconds.tradeCount.sell.big", ["trade_last10Seconds", "tradeCount", "sell", "big"]),
+        ("trade_last10Seconds.tradeCount.sell.super", ["trade_last10Seconds", "tradeCount", "sell", "super"]),
+        ("trade_last10Seconds.tradeCount.bot", ["trade_last10Seconds", "tradeCount", "bot"]),
     ]
 
     result_df = df.copy()
 
     # Extract each nested field
     for col_name, keys in nested_fields:
-        if any(key in df.columns for key in [keys[0], keys[0].replace("_", "")]):
-            result_df[col_name] = df.apply(
-                lambda row: safe_get(row.get(keys[0], row.get(keys[0].replace("_", ""), {})), keys[1:]), axis=1
-            )
+        # Tarkista onko ylätason kenttä (tradeLast5Seconds tai trade_last5Seconds) olemassa
+        root_field = keys[0]
+        if root_field in df.columns:
+            result_df[col_name] = df.apply(lambda row: safe_get(row.get(root_field, {}), keys[1:]), axis=1)
+            
+    # Käsittele creationTime erikseen - jos se puuttuu mutta originalTimestamp löytyy, käytä sitä
+    if "creationTime" not in result_df.columns and "originalTimestamp" in df.columns:
+        result_df["creationTime"] = df["originalTimestamp"]
 
     return result_df
 
@@ -251,9 +305,12 @@ def preprocess_market_data(df):
     # Make a copy to avoid modifying the original
     result = df.copy()
 
-    # Extract nested fields if present
-    has_nested = any("tradeLast5Seconds" in col or "trade_last5Seconds" in col for col in result.columns)
-    if has_nested:
+    # Tarkista onko datassa nestettyjä kenttiä missä tahansa muodossa
+    has_nested_camel = any("tradeLast" in col for col in result.columns)
+    has_nested_snake = any("trade_last" in col for col in result.columns)
+    
+    # Poimi nested-kentät jos niitä on missä tahansa muodossa
+    if has_nested_camel or has_nested_snake:
         result = extract_nested_fields(result)
 
     # Convert string numeric values to float

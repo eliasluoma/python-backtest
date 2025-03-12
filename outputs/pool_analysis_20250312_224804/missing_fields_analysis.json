@@ -1,0 +1,11 @@
+{
+  "missing_fields_count": {
+    "initialHoldersCount": 1
+  },
+  "most_common_missing": [
+    {
+      "field": "initialHoldersCount",
+      "count": 1
+    }
+  ]
+}
