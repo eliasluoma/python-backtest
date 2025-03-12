@@ -1,0 +1,30 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+seaborn = "*"
+jupyter = "*"
+ipykernel = "*"
+joblib = "*"
+nbformat = "*"
+fastapi = "*"
+uvicorn = "*"
+tensorflow = "*"
+optuna = {extras = ["tfkeras"], version = "*"}
+xgboost = "*"
+scikit-learn = "*"
+pandas = "*"
+numpy = "*"
+matplotlib = "*"
+firebase-admin = "*"
+pytz = "*"
+tqdm = "*"
+python-dotenv = "*"
+imblearn = "*"
+
+[requires]
+python_version = "3.11"
+
+[dev-packages]
