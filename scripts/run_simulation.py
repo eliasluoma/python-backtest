@@ -25,20 +25,9 @@ from src.simulation.sell_simulator import SellSimulator, calculate_trade_metrics
 # We'll implement these in future steps
 # from src.utils.visualization import plot_results
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(f"simulation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"),
-    ],
-)
-logger = logging.getLogger("SimulationRunner")
 
-
-def parse_arguments():
-    """Parse command line arguments."""
+def parse_args():
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Solana Trading Strategy Simulator")
 
     # Firebase options
@@ -276,8 +265,24 @@ def save_results(buy_opportunities: List[Dict], trades: Optional[List[Dict]], ou
 
 
 if __name__ == "__main__":
-    # Parse command line arguments
-    args = parse_arguments()
+    # Parse arguments
+    args = parse_args()
+
+    # Create logs directory if it doesn't exist
+    os.makedirs("logs", exist_ok=True)
+
+    # Get current timestamp for the log filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = f"logs/simulation_{timestamp}.log"
+
+    # Set up logging
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[logging.FileHandler(log_file), logging.StreamHandler()],
+    )
+
+    logger = logging.getLogger("SimulationRunner")
 
     logger.info("Starting Solana Trading Strategy Simulator")
 
