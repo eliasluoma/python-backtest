@@ -49,4 +49,15 @@ Thumbs.db
 # Project specific
 logs/
 log/
-.mypy_cache/ firebase-key.json
+.mypy_cache/
+
+# Credentials and secrets - NEVER commit these!
+firebase-key.json
+*credentials*.json
+*secret*.json
+*key*.json
+*auth*.json
+credentials/
+.env
+.env.local
+.env.*.local

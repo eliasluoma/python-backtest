@@ -32,12 +32,19 @@ This project is a backtesting framework for Solana trading strategies. It can fe
 
 3. Set up Firebase credentials:
    
-   Place your Firebase service account key in the project root as `firebase-key.json`.
+   **IMPORTANT: Never commit credential files to your repository!**
    
-   Alternatively, you can set an environment variable to point to your credentials file:
+   The recommended way to set up Firebase credentials is through environment variables:
    ```bash
-   export FIREBASE_KEY_FILE=/path/to/your/firebase-key.json
+   export FIREBASE_KEY_FILE=/path/to/your/firebase-credentials.json
    ```
+   
+   Alternatively, you can store the credentials file in one of these secure locations:
+   - `credentials/firebase-credentials.json` (create a credentials directory that is git-ignored)
+   - `~/.config/firebase-credentials.json` (user config directory)
+   - `/etc/firebase-credentials.json` (system-wide location)
+   
+   Make sure to add any credential files to `.gitignore` to prevent accidentally committing them.
 
 ### Configuration
 

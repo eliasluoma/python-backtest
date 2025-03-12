@@ -13,21 +13,36 @@ def initialize_firebase():
     """Initialize Firebase connection if not already initialized."""
     try:
         if not firebase_admin._apps:
-            # Try to find firebase key file
-            key_file = os.environ.get("FIREBASE_KEY_FILE", "firebase-key.json")
-            if not os.path.exists(key_file):
+            # Check for environment variable first (recommended approach)
+            key_file = os.environ.get("FIREBASE_KEY_FILE")
+
+            # If environment variable is not set, look for credential file in various locations
+            if not key_file or not os.path.exists(key_file):
+                logger.warning("FIREBASE_KEY_FILE environment variable not set or invalid.")
+                logger.warning("Looking for credential file in common locations.")
+                logger.warning("NOTE: Storing credential files in your repo is a security risk!")
+                logger.warning("Consider using environment variables instead.")
+
                 # Try common locations
                 common_locations = [
-                    "firebase-key.json",
-                    os.path.expanduser("~/firebase-key.json"),
-                    "/etc/firebase-key.json",
+                    "credentials/firebase-credentials.json",  # Preferred location within credentials directory
+                    os.path.expanduser("~/.config/firebase-credentials.json"),  # User config directory
+                    "/etc/firebase-credentials.json",  # System-wide location
                 ]
+
                 for loc in common_locations:
                     if os.path.exists(loc):
                         key_file = loc
+                        logger.info(f"Found Firebase credential file at: {key_file}")
                         break
 
-            logger.info(f"Found Firebase key file at: {key_file}")
+                if not key_file or not os.path.exists(key_file):
+                    raise FileNotFoundError(
+                        "Firebase credentials not found. Please set the FIREBASE_KEY_FILE environment "
+                        "variable or ensure the credential file exists in one of the expected locations."
+                    )
+
+            logger.info(f"Using Firebase credentials from: {key_file}")
             cred = credentials.Certificate(key_file)
             firebase_admin.initialize_app(cred)
             logger.info("Firebase connection initialized successfully.")
