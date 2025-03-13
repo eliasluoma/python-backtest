@@ -886,6 +886,13 @@ def import_new_pools(
     logger.info(f"Found {len(local_pools)} pools in local database")
     print(f"Found {len(local_pools)} pools in local database")
     
+    # 1.5 Also get pools that have already been checked but had insufficient data points
+    print("Fetching previously checked pools with insufficient data points...")
+    previously_checked_pools = cache_service.get_pools_with_datapoints_below_threshold(min_data_points)
+    previously_checked_pool_ids = {pool["pool_id"].lower() for pool in previously_checked_pools}
+    logger.info(f"Found {len(previously_checked_pool_ids)} previously checked pools with < {min_data_points} data points")
+    print(f"Found {len(previously_checked_pool_ids)} previously checked pools with insufficient data points")
+    
     # 2. Get all available pool IDs from Firebase
     print("Fetching available pools from Firebase...")
     # Use larger limit to account for filtering
@@ -900,12 +907,17 @@ def import_new_pools(
     logger.info(f"Found {len(firebase_pools)} pools in Firebase")
     print(f"Found {len(firebase_pools)} pools in Firebase")
     
-    # 3. Find new pools (in Firebase but not in local database)
-    new_pools = [pool_id for pool_id in firebase_pools if pool_id.lower() not in 
-                 [p.lower() for p in local_pools]]
+    # 3. Filter out pools that are:
+    # a) already in local database, or
+    # b) previously checked and had insufficient data points
+    new_pools = []
+    for pool_id in firebase_pools:
+        pool_id_lower = pool_id.lower()
+        if pool_id_lower not in [p.lower() for p in local_pools] and pool_id_lower not in previously_checked_pool_ids:
+            new_pools.append(pool_id)
     
-    logger.info(f"Identified {len(new_pools)} completely new pools")
-    print(f"Identified {len(new_pools)} completely new pools")
+    logger.info(f"Identified {len(new_pools)} completely new, unchecked pools")
+    print(f"Identified {len(new_pools)} completely new, unchecked pools")
     
     if not new_pools:
         logger.info("No new pools to import")
@@ -919,6 +931,7 @@ def import_new_pools(
     start_check_time = time.time()
     acceptable_pools = []
     rejected_pools = []
+    rejected_pool_data = {}  # Store data point counts for rejected pools
     estimation_accuracy = []
     total_estimated = 0
     total_actual = 0
@@ -948,6 +961,8 @@ def import_new_pools(
             total_estimated += estimated_count
         else:
             rejected_pools.append(pool_id)
+            # Save data point count for rejected pools
+            rejected_pool_data[pool_id] = actual_count
     
     # New line after progress bar
     print()
@@ -964,6 +979,13 @@ def import_new_pools(
     print(f"  Average estimation accuracy: {avg_accuracy:.2f}")
     print(f"  Evaluation time: {check_time:.2f} seconds")
     print(f"  Average time per pool: {check_time / max(1, len(new_pools)):.4f} seconds")
+    
+    # Record data point counts for rejected pools
+    if rejected_pool_data:
+        print(f"\nRecording data point counts for {len(rejected_pool_data)} rejected pools...")
+        recorded_count = cache_service.record_pool_data_points(rejected_pool_data)
+        print(f"Recorded data points for {recorded_count} rejected pools")
+        print(f"These pools will be skipped in future checks unless min_points is lowered")
     
     if not acceptable_pools:
         print("\nNo pools with sufficient data points found. Nothing to import.")
@@ -995,16 +1017,24 @@ def import_new_pools(
     new_pool_ids = {pool_info["poolAddress"].lower() for pool_info in new_pools_after_import}
     
     # Find successfully imported pools
-    successfully_imported = [
-        pool_id for pool_id in acceptable_pools
-        if pool_id.lower() in new_pool_ids
-    ]
+    successfully_imported = []
+    imported_pool_data = {}  # Store data point counts for imported pools
+    
+    for pool_id in acceptable_pools:
+        pool_id_lower = pool_id.lower()
+        if pool_id_lower in new_pool_ids:
+            successfully_imported.append(pool_id)
+            # Find data point count for this pool
+            for pool_info in new_pools_after_import:
+                if pool_info["poolAddress"].lower() == pool_id_lower:
+                    imported_pool_data[pool_id] = pool_info["dataPoints"]
+                    break
     
     if successfully_imported:
         mark_start_time = time.time()
-        # Mark pools as verified
+        # Mark pools as verified with their data point counts
         note = f"Verified automatically {datetime.now().strftime('%Y-%m-%d %H:%M')} during import"
-        marked_count = cache_service.mark_pools_verified(successfully_imported, note)
+        marked_count = cache_service.mark_pools_verified(successfully_imported, note, imported_pool_data)
         mark_time = time.time() - mark_start_time
         
         print(f"Marked {marked_count} pools as verified (duration: {mark_time:.2f} seconds)")
@@ -1028,6 +1058,7 @@ def check_data_integrity(
     """
     Check local database for pools with incomplete data compared to Firebase.
     Update any pools that have fewer data points locally than in Firebase.
+    Also check previously rejected pools to see if they now have enough data points.
 
     Args:
         cache_service: The data cache service instance
@@ -1041,12 +1072,27 @@ def check_data_integrity(
     logger.info(f"Starting data integrity check with limit={limit if limit else 'all'}, min_data_points={min_data_points}")
     start_time = time.time()
     
-    # 1. Get all verified pool IDs from local database
+    # 1. Get all verified pool IDs from local database (pools with enough data points)
     print("Fetching verified pools from local database...")
     verified_pools = cache_service.get_verified_pools()
-    verified_pool_ids = {pool_info["poolAddress"].lower() for pool_info in verified_pools}
+    
+    # Only consider pools as "verified" if they don't have a "Not verified" note
+    verified_pool_ids = {
+        pool_info["poolAddress"].lower() 
+        for pool_info in verified_pools 
+        if "not verified" not in pool_info.get("note", "").lower()
+    }
+    
     logger.info(f"Found {len(verified_pool_ids)} verified pools in local database")
     print(f"Found {len(verified_pool_ids)} verified pools in local database")
+    
+    # 1.5 Get also pools with insufficient data points
+    previously_rejected_pools = [
+        pool_info for pool_info in verified_pools 
+        if "not verified" in pool_info.get("note", "").lower()
+    ]
+    logger.info(f"Found {len(previously_rejected_pools)} previously rejected pools in database")
+    print(f"Found {len(previously_rejected_pools)} previously rejected pools in database")
     
     # 2. Get all pool information from local database
     print("Fetching all pools with data points from local database...")
@@ -1059,7 +1105,7 @@ def check_data_integrity(
     print(f"Found {len(local_pool_datapoints)} pools with data points in local database")
     print(f"Total data points in local database: {sum(local_pool_datapoints.values())}")
     
-    # 3. Get unverified pools
+    # 3. Get unverified pools (those with enough data but not marked as verified)
     unverified_pool_ids = [
         pool_id for pool_id in local_pool_datapoints.keys()
         if pool_id not in verified_pool_ids
@@ -1068,24 +1114,42 @@ def check_data_integrity(
     logger.info(f"Found {len(unverified_pool_ids)} unverified pools in local database")
     print(f"Found {len(unverified_pool_ids)} unverified pools in local database")
     
-    if not unverified_pool_ids:
-        print("\nAll pools in local database are verified. No integrity check needed.")
-        logger.info("All pools in local database are verified. No integrity check needed.")
+    # 4. Create list of pools to check for data integrity
+    pools_to_check = []
+    
+    # Add unverified pools
+    pools_to_check.extend(unverified_pool_ids)
+    
+    # Add previously rejected pools to recheck if they now have enough data
+    rejected_pool_ids = [pool["pool_id"] for pool in previously_rejected_pools]
+    print(f"Adding {len(rejected_pool_ids)} previously rejected pools to check list")
+    pools_to_check.extend(rejected_pool_ids)
+    
+    # Remove duplicates
+    pools_to_check = list(set(pools_to_check))
+    
+    if not pools_to_check:
+        print("\nNo pools to check for data integrity. All pools are verified.")
+        logger.info("No pools to check for data integrity. All pools are verified.")
         return True
     
-    # 4. Fast evaluation of unverified pools to check for missing data
+    print(f"\nWill check data integrity for {len(pools_to_check)} pools")
+    
+    # 5. Fast evaluation of pools to check for missing data
     print("\n--- CHECKING DATA INTEGRITY ---")
-    print(f"Evaluating {len(unverified_pool_ids)} unverified pools for missing data...")
+    print(f"Evaluating {len(pools_to_check)} pools for missing or updated data...")
     
     start_check_time = time.time()
     incomplete_pools = []
+    rejected_pools = []
+    rejected_data = {}
     
-    for i, pool_id in enumerate(unverified_pool_ids):
+    for i, pool_id in enumerate(pools_to_check):
         # Display progress
         if i % 1 == 0:
-            progress = (i + 1) / len(unverified_pool_ids) * 100
+            progress = (i + 1) / len(pools_to_check) * 100
             progress_bar = int(progress / 2)  # 50 characters for full bar
-            print(f"\r[{'=' * progress_bar}{' ' * (50 - progress_bar)}] {progress:.1f}% ({i+1}/{len(unverified_pool_ids)})", end="")
+            print(f"\r[{'=' * progress_bar}{' ' * (50 - progress_bar)}] {progress:.1f}% ({i+1}/{len(pools_to_check)})", end="")
             sys.stdout.flush()
         
         pool_id_lower = pool_id.lower()
@@ -1096,9 +1160,18 @@ def check_data_integrity(
             firebase_service, pool_id, min_data_points
         )
         
-        # If Firebase has significantly more data than local database, add to incomplete pools
-        if actual_count > local_data_count + 10 and actual_count >= min_data_points:
-            incomplete_pools.append((pool_id, local_data_count, actual_count))
+        # Categorize based on data point counts
+        if actual_count >= min_data_points:
+            # If Firebase has significantly more data than local database, add to incomplete pools
+            if actual_count > local_data_count + 10:
+                incomplete_pools.append((pool_id, local_data_count, actual_count))
+            # If pool was previously rejected but now has enough data points, add it to incomplete pools
+            elif pool_id in rejected_pool_ids and actual_count > local_data_count:
+                incomplete_pools.append((pool_id, local_data_count, actual_count))
+        else:
+            # Record rejected pools to update their data point counts
+            rejected_pools.append(pool_id)
+            rejected_data[pool_id] = actual_count
     
     # New line after progress bar
     print()
@@ -1110,7 +1183,14 @@ def check_data_integrity(
     incomplete_pools.sort(key=lambda x: x[2] - x[1], reverse=True)
     
     print(f"\nData integrity check completed in {check_time:.2f} seconds")
-    print(f"Found {len(incomplete_pools)} incomplete pools with missing data")
+    print(f"Found {len(incomplete_pools)} incomplete pools with missing or updated data")
+    
+    # Record data point counts for rejected pools
+    if rejected_data:
+        print(f"\nRecording data point counts for {len(rejected_data)} rejected pools...")
+        recorded_count = cache_service.record_pool_data_points(rejected_data)
+        print(f"Recorded data points for {recorded_count} rejected pools")
+        print(f"These pools will be skipped in future checks unless min_points is lowered")
     
     if not incomplete_pools:
         print("\nNo incomplete pools found. Local database is consistent with Firebase.")
@@ -1156,6 +1236,8 @@ def check_data_integrity(
     
     # Find successfully updated pools
     successfully_updated = []
+    updated_data = {}
+    
     for pool_id, local_count, firebase_count in incomplete_pools:
         pool_id_lower = pool_id.lower()
         if pool_id_lower in updated_pool_ids:
@@ -1163,12 +1245,13 @@ def check_data_integrity(
             # Only mark as verified if we got at least 90% of the expected data points
             if new_count >= firebase_count * 0.9:
                 successfully_updated.append(pool_id)
+                updated_data[pool_id] = new_count
     
     if successfully_updated:
         mark_start_time = time.time()
-        # Mark pools as verified
+        # Mark pools as verified with their data point counts
         note = f"Verified automatically {datetime.now().strftime('%Y-%m-%d %H:%M')} during integrity check"
-        marked_count = cache_service.mark_pools_verified(successfully_updated, note)
+        marked_count = cache_service.mark_pools_verified(successfully_updated, note, updated_data)
         mark_time = time.time() - mark_start_time
         
         print(f"Marked {marked_count} pools as verified (duration: {mark_time:.2f} seconds)")

@@ -1049,3 +1049,214 @@ class DataCacheService:
                 del result_df[col]
 
         return result_df
+
+    def get_verified_pools(self) -> List[Dict[str, Any]]:
+        """
+        Get list of verified pools from the cache.
+        
+        Returns:
+            List of dictionaries containing pool_id, verified_at, note, and data_points
+        """
+        try:
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.execute(
+                """
+                SELECT pool_id, verified_at, note, data_points
+                FROM verified_pools
+                ORDER BY verified_at DESC
+                """
+            )
+            
+            # Convert to list of dictionaries
+            result = []
+            for row in cursor.fetchall():
+                result.append({
+                    "pool_id": row[0],
+                    "poolAddress": row[0],  # Additional alias for compatibility
+                    "verified_at": row[1],
+                    "note": row[2],
+                    "data_points": row[3] if len(row) > 3 else 0  # Handle older rows without data_points
+                })
+            
+            return result
+        
+        except Exception as e:
+            logger.error(f"Error getting verified pools: {e}")
+            return []
+        finally:
+            if "conn" in locals():
+                conn.close()
+
+    def mark_pools_verified(self, pool_ids: List[str], note: str = "", data_points: Dict[str, int] = None) -> int:
+        """
+        Mark pools as verified in the database.
+        
+        Args:
+            pool_ids: List of pool IDs to mark as verified
+            note: Optional note about the verification
+            data_points: Optional dictionary mapping pool_ids to their data point counts
+        
+        Returns:
+            Number of pools successfully marked
+        """
+        if not pool_ids:
+            return 0
+        
+        if data_points is None:
+            data_points = {}
+        
+        try:
+            conn = sqlite3.connect(str(self.db_path))
+            
+            # Begin transaction
+            conn.execute("BEGIN TRANSACTION")
+            
+            marked_count = 0
+            current_time = datetime.now().isoformat()
+            
+            for pool_id in pool_ids:
+                try:
+                    # Get data_points for this pool if available
+                    points = data_points.get(pool_id.lower(), 0)
+                    
+                    # Insert or replace entry
+                    conn.execute(
+                        """
+                        INSERT OR REPLACE INTO verified_pools
+                        (pool_id, verified_at, note, data_points)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (pool_id, current_time, note, points)
+                    )
+                    marked_count += 1
+                except Exception as e:
+                    logger.error(f"Error marking pool {pool_id} as verified: {e}")
+            
+            # Commit transaction
+            conn.commit()
+            
+            logger.info(f"Marked {marked_count} pools as verified")
+            return marked_count
+        
+        except Exception as e:
+            logger.error(f"Error marking pools as verified: {e}")
+            if "conn" in locals():
+                conn.rollback()
+            return 0
+        finally:
+            if "conn" in locals():
+                conn.close()
+
+    def record_pool_data_points(self, pool_data: Dict[str, int], last_checked: str = None) -> int:
+        """
+        Record data point counts for pools without marking them as verified.
+        Used for pools that don't meet minimum data point requirements.
+        
+        Args:
+            pool_data: Dictionary mapping pool_id to data point count
+            last_checked: Optional timestamp for when the pools were checked
+        
+        Returns:
+            Number of pools successfully recorded
+        """
+        if not pool_data:
+            return 0
+        
+        try:
+            conn = sqlite3.connect(str(self.db_path))
+            
+            # Begin transaction
+            conn.execute("BEGIN TRANSACTION")
+            
+            recorded_count = 0
+            current_time = last_checked or datetime.now().isoformat()
+            
+            for pool_id, points in pool_data.items():
+                try:
+                    # Check if pool already exists in verified_pools
+                    cursor = conn.execute(
+                        "SELECT pool_id FROM verified_pools WHERE pool_id = ?",
+                        (pool_id,)
+                    )
+                    
+                    if cursor.fetchone():
+                        # Update only data_points for existing entries
+                        conn.execute(
+                            """
+                            UPDATE verified_pools
+                            SET data_points = ?
+                            WHERE pool_id = ?
+                            """,
+                            (points, pool_id)
+                        )
+                    else:
+                        # Insert new entry with "Not verified" note
+                        conn.execute(
+                            """
+                            INSERT INTO verified_pools
+                            (pool_id, verified_at, note, data_points)
+                            VALUES (?, ?, ?, ?)
+                            """,
+                            (pool_id, current_time, "Not verified - insufficient data points", points)
+                        )
+                    
+                    recorded_count += 1
+                except Exception as e:
+                    logger.error(f"Error recording data points for pool {pool_id}: {e}")
+            
+            # Commit transaction
+            conn.commit()
+            
+            logger.info(f"Recorded data points for {recorded_count} pools")
+            return recorded_count
+        
+        except Exception as e:
+            logger.error(f"Error recording pool data points: {e}")
+            if "conn" in locals():
+                conn.rollback()
+            return 0
+        finally:
+            if "conn" in locals():
+                conn.close()
+
+    def get_pools_with_datapoints_below_threshold(self, threshold: int = 600) -> List[Dict[str, Any]]:
+        """
+        Get pools with recorded data points below the specified threshold.
+        
+        Args:
+            threshold: Data point threshold 
+            
+        Returns:
+            List of pool entries with data points below threshold
+        """
+        try:
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.execute(
+                """
+                SELECT pool_id, verified_at, note, data_points
+                FROM verified_pools
+                WHERE data_points > 0 AND data_points < ?
+                ORDER BY data_points DESC
+                """,
+                (threshold,)
+            )
+            
+            # Convert to list of dictionaries
+            result = []
+            for row in cursor.fetchall():
+                result.append({
+                    "pool_id": row[0],
+                    "poolAddress": row[0],
+                    "verified_at": row[1],
+                    "note": row[2],
+                    "data_points": row[3]
+                })
+            
+            return result
+        
+        except Exception as e:
+            logger.error(f"Error getting pools with low data points: {e}")
+            return []
+        finally:
+            if "conn" in locals():
+                conn.close()
