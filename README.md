@@ -57,6 +57,114 @@ MAX_POOLS=10
 
 ## Usage
 
+### Unified Command Line Interface
+
+The Solana Trading Simulator provides a unified command-line interface for all functionality:
+
+```bash
+./solana_simulator.py [command] [options]
+```
+
+Or alternatively:
+
+```bash
+python solana_simulator.py [command] [options]
+```
+
+The following commands are available:
+
+#### Simulate Trading Strategies
+
+```bash
+./solana_simulator.py simulate [options]
+```
+
+Options:
+- **Data Parameters**:
+  - `--credentials`: Firebase credentials JSON file
+  - `--env-file`: Path to .env file (default: .env.local)
+  - `--max-pools`: Maximum number of pools to analyze (default: 10)
+  - `--min-data-points`: Minimum data points required per pool (default: 100)
+  
+- **Buy Parameters**:
+  - `--early-mc-limit`: Market cap threshold for early filtering (default: 400000)
+  - `--min-delay`: Minimum delay in seconds (default: 60)
+  - `--max-delay`: Maximum delay in seconds (default: 200)
+  - `--mc-change-5s`: Market cap change 5s threshold (default: 5.0)
+  - `--holder-delta-30s`: Holder delta 30s threshold (default: 20)
+  - `--buy-volume-5s`: Buy volume 5s threshold (default: 5.0)
+  
+- **Sell Parameters**:
+  - `--take-profit`: Take profit multiplier (default: 1.9)
+  - `--stop-loss`: Stop loss multiplier (default: 0.65)
+  - `--trailing-stop`: Trailing stop multiplier (default: 0.9)
+  - `--skip-sell`: Skip sell simulation (flag)
+
+#### Analyze Market Data
+
+```bash
+./solana_simulator.py analyze [subcommand] [options]
+```
+
+Subcommands:
+- `all`: Analyze all pools
+  ```bash
+  ./solana_simulator.py analyze all [options]
+  ```
+  
+- `invalid`: Analyze invalid pools
+  ```bash
+  ./solana_simulator.py analyze invalid --input invalid_pools.json [options]
+  ```
+  Options:
+  - `--input`, `-i`: Path to JSON file containing invalid pool IDs
+  - `--output`, `-o`: Path to save the analysis results
+  - `--max-pools`, `-m`: Maximum number of pools to analyze
+  - `--limit-per-pool`, `-l`: Maximum number of data points per pool
+
+#### Export Pool Data
+
+```bash
+./solana_simulator.py export --input pools.json [options]
+```
+
+Options:
+- `--input`, `-i`: Path to JSON file containing pool IDs (required)
+- `--output-dir`, `-o`: Directory to save the exported data
+- `--max-rows`, `-m`: Maximum number of rows to export per pool
+- `--format`, `-f`: Output format (json or csv)
+
+#### Visualize Data
+
+```bash
+./solana_simulator.py visualize [subcommand] [options]
+```
+
+Subcommands:
+- `market`: Visualize market data
+  ```bash
+  ./solana_simulator.py visualize market --input data.json [options]
+  ```
+  
+- `results`: Visualize simulation results
+  ```bash
+  ./solana_simulator.py visualize results --input results.json [options]
+  ```
+  
+- `compare`: Compare different strategies
+  ```bash
+  ./solana_simulator.py visualize compare --input results1.json results2.json [options]
+  ```
+
+### Common Options
+
+These options are available for all commands:
+
+- `--verbose`, `-v`: Increase verbosity (can be used multiple times)
+- `--quiet`, `-q`: Suppress non-error messages
+- `--output-dir`: Directory to save output files (default: outputs)
+- `--version`: Show version information
+
 ### Fetching Data from Firebase
 
 ```python
