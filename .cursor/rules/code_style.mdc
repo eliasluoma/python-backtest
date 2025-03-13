@@ -1,0 +1,103 @@
+---
+description: Python code style, formatting, and quality standards for Solana Trading Simulator
+globs: "**/*.py,**/*.pyi,pyproject.toml,.flake8,setup.py"
+---
+# Code Style Guidelines
+
+## Description
+This rule provides guidelines for Python code style, formatting, and quality standards for the Solana Trading Simulator project. Apply these standards to maintain consistency across the codebase and ensure high-quality, readable code.
+
+## Patterns
+- **/*.py
+- **/*.pyi
+- pyproject.toml
+- .flake8
+- setup.py
+
+## General Principles
+- Readability: Code should be easy to read and understand
+- Consistency: Maintain consistent style throughout the codebase
+- Simplicity: Prefer simple solutions over complex ones, especially for trading strategies
+
+## Python Version
+- Use Python 3.9+ features as configured in pyproject.toml
+- Utilize type hints for better code documentation
+
+## Formatting
+- Line length: Maximum of 120 characters for code, comments, and documentation
+- Indentation: 4 spaces (no tabs)
+- No trailing whitespace, files should end with a single newline
+- Use blank lines to separate logical sections of code
+
+## Code Formatting Tools
+- Use Black for automatic code formatting with line length of 120 characters
+- Sort imports with isort (configured to be compatible with Black)
+
+## Type Hints
+- Include type hints in function signatures for simulation and data processing functions
+- Use modern typing features (from Python 3.9+)
+- Follow mypy configuration in pyproject.toml, which includes:
+  - Ignore missing imports
+  - Allow untyped definitions as needed
+
+## Code Quality Tools
+- Run Flake8 to enforce PEP 8 style guide and check for errors
+- Use MyPy for static type checking where appropriate
+- Follow the configured exceptions in .flake8 file
+
+## Naming Conventions
+- Use snake_case for function and variable names
+- Use PascalCase for class names (e.g., BacktestRunner, BuySimulator)
+- Use UPPER_CASE for constants
+- Prefix private methods with underscore (e.g., _calculate_statistics)
+
+## Configuration References
+
+### Black Configuration
+```toml
+[tool.black]
+line-length = 120
+target-version = ['py39']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+```
+
+### MyPy Configuration
+```toml
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = false
+warn_unused_configs = false
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
+disallow_untyped_decorators = false
+no_implicit_optional = false
+strict_optional = false
+ignore_missing_imports = true
+```
+
+### Flake8 Configuration
+```ini
+[flake8]
+max-line-length = 120
+ignore = E111,E114,E115,E116,E117,E121,...
+```
+
+## Editor Integration
+- Respect VS Code / Cursor settings in .vscode/settings.json
+- Use editor features that enforce project standards
+- Format on save is enabled for Python files

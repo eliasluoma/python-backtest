@@ -1,0 +1,87 @@
+---
+description: Git workflow, commit messages, and branching strategy for Solana Trading Simulator
+globs: ".gitignore,.git/**/*"
+---
+# Version Control Guidelines
+
+## Description
+This rule provides standards for Git workflow, commit messages, and branching strategy for the Solana Trading Simulator project. Apply these guidelines to maintain a clean, organized, and traceable version history.
+
+## Patterns
+- .gitignore
+- .git/**/*
+
+## Branch Strategy
+- `main`: Production-ready code
+- `develop`: Integration branch for features
+- `feature/*`: For new features or enhancements
+- `fix/*`: For bug fixes
+- `refactor/*`: For code refactoring without behavior changes
+- `docs/*`: For documentation-only changes
+
+## Feature Development Workflow
+1. Create a feature branch from `develop`
+2. Develop and test the feature
+3. Create a pull request to merge back to `develop`
+4. After review and testing, merge to `develop`
+5. Periodically merge `develop` to `main` for releases
+
+## Commit Messages
+- Use clear, descriptive commit messages
+- Follow the format: `[Component] Brief description`
+- Components in the Solana Trading Simulator:
+  - `[Data]`: Changes to data handling and Firebase integration
+  - `[Simulation]`: Changes to simulation logic
+  - `[Analysis]`: Changes to analysis and reporting
+  - `[CLI]`: Changes to command-line interfaces
+  - `[Docs]`: Documentation changes
+  - `[Tests]`: Changes to tests
+  - `[Config]`: Configuration changes
+
+## Commit Examples
+- `[Data] Fix timestamp conversion in Firebase service`
+- `[Simulation] Add trailing stop loss feature to sell simulator`
+- `[Analysis] Improve visualization of trade results`
+- `[CLI] Add verbose mode to run_simulation.py`
+- `[Docs] Update Firebase schema documentation`
+
+## Specific Considerations for Solana Trading Simulator
+- Never commit credential files (firebase-key.json)
+- Keep simulation output files out of version control
+- Include example data but not production data
+- Document parameter changes in commit messages
+- Note performance improvements in commit messages
+
+## Git Ignore Rules
+- Ensure `.env.local` is in `.gitignore`
+- Ignore Firebase credential files
+- Ignore output directories (results/, outputs/)
+- Ignore Python cache files and virtual environment directories
+- Include `.gitignore` patterns for:
+  - credentials/
+  - *.json in results/ and outputs/
+  - logs/
+  - **/__pycache__/
+  - *.pyc
+  - .env*
+
+## Pull Requests
+- Create descriptive pull request titles
+- Include a summary of changes
+- Reference related issues or tickets
+- Note any breaking changes
+- Include testing steps
+- List any parameter or configuration changes
+
+## Version Tagging
+- Tag releases with semantic versioning (vX.Y.Z)
+- Include release notes with tags
+- Document major algorithm or strategy changes in release notes
+- Note compatibility requirements
+
+## Code Review
+- Review code changes carefully before approval
+- Verify that tests pass
+- Check for credential leaks
+- Ensure documentation is updated
+- Validate parameter changes with test results

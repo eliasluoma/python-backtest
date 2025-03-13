@@ -1,0 +1,47 @@
+---
+description: General project guidelines and principles for Solana Trading Simulator
+alwaysApply: true
+---
+# General Project Guidelines
+
+## Description
+This rule provides overall guidelines that apply to all aspects of the Solana Trading Simulator project. These principles should be considered regardless of the specific task type or file being modified.
+
+## Core Principles
+- Always plan first before making any changes to simulation components
+- Consider the big picture of the backtesting framework when implementing features
+- Maintain code quality and readability throughout the codebase
+- Document trading strategies and simulation parameters thoroughly
+- Test changes thoroughly with sample data before committing
+
+## Project Structure
+- Follow established directory structure (src/, docs/, examples/, etc.)
+- Place files in the appropriate directories based on their purpose:
+  - `src/data/`: Data handling and Firebase integration
+  - `src/simulation/`: Simulation logic and algorithms
+  - `src/analysis/`: Analysis tools and reporting
+  - `src/utils/`: Utility functions and helpers
+  - `docs/`: Documentation for components and usage
+  - `examples/`: Example scripts showing usage
+  - `tests/`: Test cases and fixtures
+- Maintain separation of concerns between trading strategy logic and simulation framework
+- Keep related code together (e.g., buy and sell strategy components)
+
+## Collaboration
+- Communicate changes clearly with team members
+- Address code review comments promptly and thoroughly
+- Keep documentation up-to-date, especially for trading strategies
+- Follow established project conventions for simulations
+
+## Performance Considerations
+- Consider the performance impact of changes, especially for data processing
+- Optimize critical paths in simulation code and frequently used functions
+- Monitor Firebase usage and implement efficient queries
+- Implement caching where appropriate for market data
+
+## Security
+- Follow security best practices, especially for Firebase integration
+- Never commit credential files to the repository
+- Use environment variables for sensitive configuration
+- Keep Firebase credentials secure
+- Follow the principle of least privilege for data access
