@@ -9,6 +9,58 @@ This project is a backtesting framework for Solana trading strategies. It can fe
 - **Backtesting**: Test trading strategies on historical data.
 - **Visualization**: Generate charts and metrics for market analysis.
 
+## Getting Started
+
+### Installation
+
+1. Clone the repository
+```bash
+git clone https://github.com/yourusername/solana-trading-simulator.git
+cd solana-trading-simulator
+```
+
+2. Set up a virtual environment
+```bash
+# Using virtualenv
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Or using pipenv
+pipenv install
+pipenv shell
+```
+
+3. Install dependencies
+```bash
+pip install -r requirements.txt
+```
+
+4. Set up Firebase credentials
+Create a `.env.local` file with your Firebase configuration or set the `FIREBASE_KEY_FILE` environment variable.
+
+### Usage
+
+The Solana Trading Simulator provides a unified command-line interface for all functionality:
+
+```bash
+# Show all available commands
+python main.py --help
+
+# Run a simulation
+python main.py simulate --max-pools 20
+
+# Import pools to the local cache
+python main.py cache import --limit 10
+
+# Check cache status
+python main.py cache status
+
+# Get help for a specific command
+python main.py cache --help
+```
+
+For detailed usage instructions, see the [CLI Guide](docs/cli_guide.md).
+
 ## Setup
 
 ### Prerequisites
@@ -16,35 +68,6 @@ This project is a backtesting framework for Solana trading strategies. It can fe
 - Python 3.8+
 - pip
 - Firebase account with Firestore database
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/solana-trading-simulator.git
-   cd solana-trading-simulator
-   ```
-
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Set up Firebase credentials:
-   
-   **IMPORTANT: Never commit credential files to your repository!**
-   
-   The recommended way to set up Firebase credentials is through environment variables:
-   ```bash
-   export FIREBASE_KEY_FILE=/path/to/your/firebase-credentials.json
-   ```
-   
-   Alternatively, you can store the credentials file in one of these secure locations:
-   - `credentials/firebase-credentials.json` (create a credentials directory that is git-ignored)
-   - `~/.config/firebase-credentials.json` (user config directory)
-   - `/etc/firebase-credentials.json` (system-wide location)
-   
-   Make sure to add any credential files to `.gitignore` to prevent accidentally committing them.
 
 ### Configuration
 

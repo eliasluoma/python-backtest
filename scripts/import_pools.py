@@ -35,7 +35,7 @@ logger = logging.getLogger("import_pools")
 # Constants
 NUM_POOLS_TO_IMPORT = 100
 MIN_DATA_POINTS = 600
-SCHEMA_FILE = root_dir / "src" / "data" / "updated_schema.sql"
+SCHEMA_FILE = root_dir / "src" / "data" / "schema.sql"
 DB_PATH = root_dir / "cache" / "pools.db"
 
 

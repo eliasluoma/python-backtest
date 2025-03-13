@@ -49,7 +49,7 @@ def add_cache_subparser(subparsers):
         default=600,
         help="Minimum data points required for a pool to be imported (default: 600 = 10 minutes)",
     )
-    import_parser.add_argument("--schema", "-s", type=str, help="Path to schema file (defaults to updated_schema.sql)")
+    import_parser.add_argument("--schema", "-s", type=str, help="Path to schema file (defaults to schema.sql)")
 
     # Clear command
     clear_parser = cache_subparsers.add_parser("clear", help="Clear cache")
@@ -368,9 +368,7 @@ def handle_cache_command(args: argparse.Namespace):
         firebase_service = FirebaseService()
 
         # Determine schema path
-        schema_path = (
-            args.schema if args.schema else Path(__file__).parent.parent.parent / "data" / "updated_schema.sql"
-        )
+        schema_path = args.schema if args.schema else Path(__file__).parent.parent.parent / "data" / "schema.sql"
 
         # Create cache service with specified schema
         cache_service = DataCacheService(db_path=str(db_path), schema_path=str(schema_path))

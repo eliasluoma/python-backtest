@@ -12,8 +12,7 @@ logger = logging.getLogger(__name__)
 
 # Import the required modules
 from src.data.firebase_service import FirebaseService
-from legacy.part1_buy_simulation import BuySimulator, preprocess_pool_data
-from legacy.part2_sell_simulation import SellSimulator
+from src.simulation.backtest_runner import BacktestRunner
 
 
 def add_simulate_subparser(subparsers: argparse._SubParsersAction) -> None:
@@ -77,8 +76,6 @@ def handle_simulate_command(args: argparse.Namespace) -> int:
 
     try:
         # Create and run simulation
-        from run_simulation import BacktestRunner
-
         runner = BacktestRunner(
             firebase_credentials=args.credentials,
             env_file=args.env_file,

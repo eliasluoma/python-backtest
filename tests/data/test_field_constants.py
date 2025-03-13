@@ -31,7 +31,7 @@ logger = logging.getLogger("test_field_constants")
 
 # Test pool ID
 TEST_POOL_ID = "12H7zN3gXRfUeu2fCQjooPAofbBL2wz7X7wKoS44oJkX"
-SCHEMA_FILE = root_dir / "src" / "data" / "updated_schema.sql"
+SCHEMA_FILE = root_dir / "src" / "data" / "schema.sql"
 TEST_DB_PATH = root_dir / "cache" / "test_fields.db"
 
 

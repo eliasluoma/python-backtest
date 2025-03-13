@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 # Add the root directory to the path
-root_dir = Path(__file__).parent
+root_dir = Path(__file__).parent.parent
 sys.path.append(str(root_dir))
 
 # Import the DataCacheService
