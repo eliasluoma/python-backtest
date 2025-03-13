@@ -380,345 +380,364 @@ class FirebaseService:
             Integer count of datapoints
         """
         try:
-            logger.debug(f"Aloitetaan datapisteiden laskenta poolille {pool_id}")
+            logger.debug(f"Starting datapoint calculation for pool {pool_id}")
             
-            # Nyt kun tiedämme tarkan polun, tarkistetaan ensin se: /marketContext/[pool-id]/marketContexts/
-            logger.debug(f"Tarkistetaan suoraan tarkka polku /marketContext/{pool_id}/marketContexts/")
+            # Now that we know the exact path, check it first: /marketContext/[pool-id]/marketContexts/
+            logger.debug(f"Checking exact path directly /marketContext/{pool_id}/marketContexts/")
             try:
-                # Tämä viittaa suoraan alakokoelmaan marketContexts, joka on dokumentin alla
+                # This refers directly to the marketContexts subcollection under the document
                 collection_ref = self.db.collection("marketContext").document(pool_id).collection("marketContexts")
                 
-                # Kokeillaan ensin hakea yksi dokumentti varmistuaksemme, että kokoelma on olemassa
+                # First try to fetch one document to make sure the collection exists
                 try:
-                    # Haetaan yksi dokumentti kokoelmasta
+                    # Fetch one document from the collection
                     docs = list(collection_ref.limit(1).stream())
                     if docs and len(docs) > 0:
-                        logger.debug(f"Löytyi dokumentti polusta /marketContext/{pool_id}/marketContexts/: {docs[0].id}")
+                        logger.debug(f"Found document at path /marketContext/{pool_id}/marketContexts/: {docs[0].id}")
                         
-                        # Nyt kun tiedämme, että kokoelma on olemassa, kokeillaan laskea dokumenttien määrä
+                        # Now that we know the collection exists, try to count the documents
                         try:
-                            # Kokeillaan count API:a, jos saatavilla
+                            # Try count API if available
                             if hasattr(collection_ref, "count") and callable(getattr(collection_ref, "count")):
                                 count_query = collection_ref.count()
                                 count_result = count_query.get()
                                 if hasattr(count_result, "__len__") and len(count_result) > 0 and hasattr(count_result[0], "value"):
                                     data_count = count_result[0].value
-                                    logger.debug(f"Löytyi {data_count} datapistettä poolille {pool_id} polusta /marketContext/{pool_id}/marketContexts/ käyttäen count API:a")
+                                    logger.debug(f"Found {data_count} datapoints for pool {pool_id} from path /marketContext/{pool_id}/marketContexts/ using count API")
                                     return data_count
                         except Exception as e:
-                            logger.debug(f"Count API epäonnistui, siirrytään vaihtoehtoiseen laskentaan: {e}")
+                            logger.debug(f"Count API failed, switching to alternative calculation: {e}")
                         
-                        # Jos count API ei toimi, haetaan kaikki dokumentit ja lasketaan määrä (rajattu määrä)
+                        # If count API doesn't work, fetch all documents and count them (limited amount)
                         docs_all = list(collection_ref.limit(5000).stream())
                         data_count = len(docs_all)
-                        logger.debug(f"Löytyi {data_count} datapistettä poolille {pool_id} polusta /marketContext/{pool_id}/marketContexts/ käyttäen stream-menetelmää")
+                        logger.debug(f"Found {data_count} datapoints for pool {pool_id} from path /marketContext/{pool_id}/marketContexts/ using stream method")
                         
-                        # Näytä ensimmäisen dokumentin sisältö debuggausta varten
+                        # Show the first document's content for debugging
                         if data_count > 0:
                             first_doc = docs_all[0].to_dict()
-                            logger.debug(f"Ensimmäisen datapisteen tiedot: {first_doc}")
+                            logger.debug(f"First datapoint information: {first_doc}")
                             
-                        # Jos löytyi datapisteitä, palautetaan määrä
+                        # If datapoints were found, return the count
                         return data_count
                     else:
-                        logger.debug(f"Ei löytynyt dokumentteja polusta /marketContext/{pool_id}/marketContexts/")
+                        logger.debug(f"No documents found at path /marketContext/{pool_id}/marketContexts/")
                 except Exception as e:
-                    logger.debug(f"Virhe haettaessa dokumentteja polusta /marketContext/{pool_id}/marketContexts/: {e}")
+                    logger.debug(f"Error fetching documents from path /marketContext/{pool_id}/marketContexts/: {e}")
             except Exception as e:
-                logger.debug(f"Virhe tarkistettaessa polkua /marketContext/{pool_id}/marketContexts/: {e}")
+                logger.debug(f"Error checking path /marketContext/{pool_id}/marketContexts/: {e}")
                 
-            # Kokeillaan myös suoraan hakea tietty esimerkki
+            # Try also to fetch a specific example directly
             test_path = f"marketContext/{pool_id}/marketContexts/marketContext_1741819702"
-            logger.debug(f"Kokeillaan hakea suoraan esimerkkidokumentti: {test_path}")
+            logger.debug(f"Trying to fetch a direct example document: {test_path}")
             try:
-                # Erottele polun osat
+                # Separate the path parts
                 parts = test_path.split('/')
-                if len(parts) >= 4:  # Vähintään 4 osaa: kokoelma/dokumentti/alakokoelma/dokumentti
+                if len(parts) >= 4:  # At least 4 parts: collection/document/subcollection/document
                     collection_name = parts[0]
                     document_id = parts[1]
                     subcollection_name = parts[2]
                     subdocument_id = parts[3]
                     
-                    # Hae dokumentti
+                    # Fetch the document
                     doc_ref = self.db.collection(collection_name).document(document_id)
                     subdoc_ref = doc_ref.collection(subcollection_name).document(subdocument_id)
                     doc = subdoc_ref.get()
                     
                     if doc.exists:
-                        logger.debug(f"Löytyi suora esimerkkidokumentti: {test_path}")
-                        logger.debug(f"Dokumentin sisältö: {doc.to_dict()}")
-                        # Jos löytyi yksi dokumentti, todennäköisesti polku on oikea ja voimme kokeilla laskea kaikki
+                        logger.debug(f"Found direct example document: {test_path}")
+                        logger.debug(f"Document content: {doc.to_dict()}")
+                        # If one document was found, the path is likely correct and we can try to count all
                         collection_ref = doc_ref.collection(subcollection_name)
                         docs_all = list(collection_ref.limit(5000).stream())
                         data_count = len(docs_all)
-                        logger.debug(f"Löytyi {data_count} datapistettä poolille {pool_id} polusta /{collection_name}/{document_id}/{subcollection_name}/ käyttäen stream-menetelmää")
+                        logger.debug(f"Found {data_count} datapoints for pool {pool_id} from path /{collection_name}/{document_id}/{subcollection_name}/ using stream method")
                         return data_count
                     else:
-                        logger.debug(f"Ei löytynyt esimerkkidokumenttia: {test_path}")
+                        logger.debug(f"Example document not found: {test_path}")
             except Exception as e:
-                logger.debug(f"Virhe haettaessa esimerkkidokumenttia {test_path}: {e}")
+                logger.debug(f"Error fetching example document {test_path}: {e}")
             
-            # Jos emme löytäneet dataa suoraan tarkasta polusta, käytetään vanhempaa hakumenetelmää
+            # 3. Specifically check the "marketContextStatus" collection
+            
+            # If we didn't find data from the exact path, use the older search method
             pool_doc_ref = None
             found_in = None
             
-            # 1. Tarkistetaan "marketContext" kokoelmasta (yksikkömuoto)
+            # 1. Check from "marketContext" collection (singular form)
             try:
                 pool_doc_ref = self.db.collection("marketContext").document(pool_id)
                 pool_doc = pool_doc_ref.get()
                 if pool_doc.exists:
                     found_in = "marketContext"
-                    logger.debug(f"Pool {pool_id} löytyi 'marketContext' kokoelmasta")
+                    logger.debug(f"Pool {pool_id} found in 'marketContext' collection")
                 else:
-                    logger.debug(f"Pool {pool_id} ei löytynyt 'marketContext' kokoelmasta")
+                    logger.debug(f"Pool {pool_id} not found in 'marketContext' collection")
             except Exception as e:
-                logger.debug(f"Virhe tarkistettaessa poolia {pool_id} marketContext-kokoelmasta: {e}")
+                logger.debug(f"Error when checking pool {pool_id} in marketContext collection: {e}")
             
-            # 2. Jos ei löytynyt, tarkistetaan "marketContexts" kokoelmasta (monikkomuoto)
+            # 2. If not found, check from "marketContexts" collection (plural form)
             if not found_in:
                 try:
                     pool_doc_ref = self.db.collection("marketContexts").document(pool_id)
                     pool_doc = pool_doc_ref.get()
                     if pool_doc.exists:
                         found_in = "marketContexts"
-                        logger.debug(f"Pool {pool_id} löytyi 'marketContexts' kokoelmasta")
+                        logger.debug(f"Pool {pool_id} found in 'marketContexts' collection")
                     else:
-                        logger.debug(f"Pool {pool_id} ei löytynyt 'marketContexts' kokoelmasta")
+                        logger.debug(f"Pool {pool_id} not found in 'marketContexts' collection")
                 except Exception as e:
-                    logger.debug(f"Virhe tarkistettaessa poolia {pool_id} marketContexts-kokoelmasta: {e}")
+                    logger.debug(f"Error when checking pool {pool_id} in marketContexts collection: {e}")
             
-            # 3. Tarkistetaan erityisesti "marketContextStatus" kokoelma
+            # 3. Specifically check the "marketContextStatus" collection
             if not found_in:
                 try:
                     pool_doc_ref = self.db.collection("marketContextStatus").document(pool_id)
                     pool_doc = pool_doc_ref.get()
                     if pool_doc.exists:
                         found_in = "marketContextStatus"
-                        logger.debug(f"Pool {pool_id} löytyi 'marketContextStatus' kokoelmasta")
+                        logger.debug(f"Pool {pool_id} found in 'marketContextStatus' collection")
                         
-                        # Tarkistetaan onko dokumentissa dataPointCount-kenttä
+                        # Check if the document has a dataPointCount field
                         doc_data = pool_doc.to_dict()
                         if doc_data and 'dataPointCount' in doc_data:
                             data_count = doc_data['dataPointCount']
-                            logger.debug(f"Pool {pool_id} dataPointCount: {data_count} (suoraan marketContextStatus-dokumentista)")
+                            logger.debug(f"Pool {pool_id} dataPointCount: {data_count} (directly from marketContextStatus document)")
                             return data_count
                             
-                        # Tarkistetaan muut mahdolliset datapisteisiin viittaavat kentät 
+                        # Check other possible fields referring to datapoints
                         possible_fields = ['totalDataPoints', 'pointCount', 'dataPoints', 'count']
                         for field in possible_fields:
                             if doc_data and field in doc_data:
                                 data_count = doc_data[field]
-                                logger.debug(f"Pool {pool_id} {field}: {data_count} (suoraan marketContextStatus-dokumentista)")
+                                logger.debug(f"Pool {pool_id} {field}: {data_count} (directly from marketContextStatus document)")
                                 return data_count
                                 
-                        # Tarkistetaan lastUpdate objektin kentät
+                        # Check lastUpdate object fields
                         if doc_data and 'lastUpdate' in doc_data and isinstance(doc_data['lastUpdate'], dict):
                             last_update = doc_data['lastUpdate']
                             if 'dataPointCount' in last_update:
                                 data_count = last_update['dataPointCount']
                                 logger.debug(f"Pool {pool_id} lastUpdate.dataPointCount: {data_count}")
                                 return data_count
-                            # Tarkistetaan myös totalPoints
+                            # Also check totalPoints
                             if 'totalPoints' in last_update:
                                 data_count = last_update['totalPoints']
                                 logger.debug(f"Pool {pool_id} lastUpdate.totalPoints: {data_count}")
                                 return data_count
-                            # Tarkistetaan myös pointCount 
+                            # Also check pointCount
                             if 'pointCount' in last_update:
                                 data_count = last_update['pointCount']
                                 logger.debug(f"Pool {pool_id} lastUpdate.pointCount: {data_count}")
-                                return data_count
                                 
-                        # Tulostetaan koko dokumentin sisältö debuggausta varten    
-                        logger.debug(f"Pool {pool_id} marketContextStatus dokumentin sisältö: {doc_data}")
+                        # Print the entire document content for debugging    
+                        logger.debug(f"Pool {pool_id} marketContextStatus document content: {doc_data}")
                         
                     else:
-                        logger.debug(f"Pool {pool_id} ei löytynyt 'marketContextStatus' kokoelmasta")
+                        logger.debug(f"Pool {pool_id} not found in 'marketContextStatus' collection")
                 except Exception as e:
-                    logger.debug(f"Virhe tarkistettaessa poolia {pool_id} marketContextStatus-kokoelmasta: {e}")
+                    logger.debug(f"Error when checking pool {pool_id} in marketContextStatus collection: {e}")
             
-            # 4. Jos ei löytynyt edellisistä, kokeillaan etsiä sisäkkäisistä kokoelmista
+            # 4. If not found in previous collections, try to search in nested collections
             if not found_in:
                 try:
-                    logger.debug(f"Etsitään poolia {pool_id} muista kokoelmista")
+                    logger.debug(f"Searching for pool {pool_id} in other collections")
                     collections = list(self.db.collections())
-                    logger.debug(f"Firebasessa on {len(collections)} kokoelmaa: {[c.id for c in collections]}")
+                    logger.debug(f"Firebase has {len(collections)} collections: {[c.id for c in collections]}")
                     
                     for collection in collections:
                         if collection.id not in ["marketContext", "marketContexts", "marketContextStatus"]:
-                            # Kokeile onko tässä kokoelmassa haettu pooli
+                            # Try if the pool is in this collection
                             try:
                                 doc_ref = collection.document(pool_id)
                                 doc = doc_ref.get()
                                 if doc.exists:
-                                    logger.debug(f"Pool {pool_id} dokumentti löytyi kokoelmasta {collection.id}")
+                                    logger.debug(f"Pool {pool_id} document found in collection {collection.id}")
                                     
-                                    # Tarkistetaan onko dokumentissa datapisteiden määrä
+                                    # Check if the document contains datapoint count
                                     doc_data = doc.to_dict()
                                     if doc_data and 'dataPointCount' in doc_data:
                                         data_count = doc_data['dataPointCount']
-                                        logger.debug(f"Pool {pool_id} dataPointCount: {data_count} (suoraan {collection.id} dokumentista)")
+                                        logger.debug(f"Pool {pool_id} dataPointCount: {data_count} (directly from {collection.id} document)")
                                         return data_count
                                         
-                                    # Kokeillaan onko tällä dokumentilla marketContexts alakokoelma
+                                    # Try if this document has marketContexts subcollection
                                     market_col = doc_ref.collection("marketContexts")
                                     market_docs = list(market_col.limit(1).stream())
                                     if market_docs:
                                         pool_doc_ref = doc_ref
                                         found_in = f"{collection.id} (with marketContexts subcollection)"
-                                        logger.debug(f"Pool {pool_id} löytyi kokoelmasta {found_in}")
+                                        logger.debug(f"Pool {pool_id} found in collection {found_in}")
                                         break
                                     else:
-                                        logger.debug(f"Pool {pool_id} löytyi kokoelmasta {collection.id}, mutta marketContexts alakokoelma on tyhjä")
+                                        logger.debug(f"Pool {pool_id} found in collection {collection.id}, but marketContexts subcollection is empty")
                             except Exception as e:
-                                logger.debug(f"Virhe tarkistettaessa poolia {pool_id} kokoelmasta {collection.id}: {e}")
+                                logger.debug(f"Error when checking pool {pool_id} from collection {collection.id}: {e}")
                 except Exception as e:
-                    logger.debug(f"Virhe tutkittaessa sisäkkäisiä kokoelmia poolille {pool_id}: {e}")
+                    logger.debug(f"Error examining nested collections for pool {pool_id}: {e}")
             
-            # Jos poolia ei löydy mistään kokoelmasta joka sisältäisi datapisteitä
+            # If the pool is not found in any collection that would contain datapoints
             if not found_in:
-                logger.debug(f"Pool {pool_id} ei löytynyt mistään kokoelmasta, joka sisältäisi datapisteitä")
+                logger.debug(f"Pool {pool_id} not found in any collection that would contain datapoints")
                 return 0
             
-            # Haetaan alakokoelma "marketContexts" - tämä on muutettu vastaamaan fetch_market_data_for_pool-funktiota
-            logger.debug(f"Haetaan alakokoelma 'marketContexts' poolille {pool_id} kokoelmasta {found_in}")
+            # Fetch subcollection "marketContexts" - this has been modified to match the fetch_market_data_for_pool function
+            logger.debug(f"Fetching subcollection 'marketContexts' for pool {pool_id} from collection {found_in}")
             collection_ref = pool_doc_ref.collection("marketContexts")
             
-            # Tuetaan sekä count() API:a että fallback-vaihtoehtoa
+            # Support both count() API and fallback alternative
             try:
-                # Joissakin Firebase SDK-versioissa on suora count()-tuki
+                # Some Firebase SDK versions have direct count() support
                 if hasattr(collection_ref, "count") and callable(getattr(collection_ref, "count")):
-                    logger.debug(f"Käytetään count() API:a poolille {pool_id}")
+                    logger.debug(f"Using count() API for pool {pool_id}")
                     count_query = collection_ref.count()
                     count_result = count_query.get()
                     
-                    # Poimitaan määrä tuloksesta
-                    logger.debug(f"Count API tulos: {count_result}")
+                    # Extract count from the result
+                    logger.debug(f"Count API result: {count_result}")
                     if hasattr(count_result, "__len__") and len(count_result) > 0 and hasattr(count_result[0], "value"):
                         data_count = count_result[0].value
-                        logger.debug(f"Löytyi {data_count} datapistettä poolille {pool_id} kokoelmasta {found_in} käyttäen count API:a")
+                        logger.debug(f"Found {data_count} datapoints for pool {pool_id} from collection {found_in} using count API")
                         return data_count
                     else:
-                        logger.debug(f"Count API palautti tyhjän tai virheellisen tuloksen: {count_result}")
+                        logger.debug(f"Count API returned empty or invalid result: {count_result}")
                 else:
-                    logger.debug(f"Count API ei ole käytettävissä poolille {pool_id}, käytetään vaihtoehtoista menetelmää")
+                    logger.debug(f"Count API is not available for pool {pool_id}, using alternative method")
             except Exception as e:
-                logger.debug(f"Count API epäonnistui poolille {pool_id}, syy: {e}")
+                logger.debug(f"Count API failed for pool {pool_id}, reason: {e}")
             
-            # Vaihtoehtoinen menetelmä: Haetaan rajattu määrä dokumentteja ja tarkistetaan määrä
+            # Alternative method: Fetch limited number of documents and check the count
             try:
-                logger.debug(f"Käytetään dokumenttien stream-menetelmää poolille {pool_id}")
-                # Haetaan vain 5000 dokumenttia, jotta kysely ei kestä liian kauan
+                logger.debug(f"Using document stream method for pool {pool_id}")
+                # Fetch only 5000 documents to keep the query time reasonable
                 docs = list(collection_ref.limit(5000).stream())
                 data_count = len(docs)
-                logger.debug(f"Löytyi {data_count} datapistettä poolille {pool_id} kokoelmasta {found_in} käyttäen stream-menetelmää")
+                logger.debug(f"Found {data_count} datapoints for pool {pool_id} from collection {found_in} using stream method")
                 
-                # Jos löytyi datapisteitä, tulostetaan ensimmäisen dokumentin tiedot
+                # If datapoints were found, print information about the first document
                 if data_count > 0:
                     first_doc = docs[0].to_dict()
-                    logger.debug(f"Ensimmäisen datapisteen tiedot: {first_doc}")
+                    logger.debug(f"First datapoint information: {first_doc}")
                     
                 return data_count
             except Exception as e:
-                logger.error(f"Virhe stream-menetelmässä poolille {pool_id}: {e}")
+                logger.error(f"Error in stream method for pool {pool_id}: {e}")
                 return 0
             
         except Exception as e:
-            logger.error(f"Kokonaisvirhe laskettaessa datapisteitä poolille {pool_id}: {e}")
+            logger.error(f"Total error when calculating datapoints for pool {pool_id}: {e}")
             return 0
 
     def get_first_and_last_document_id(self, pool_id: str) -> tuple:
         """
-        Hakee poolin ensimmäisen ja viimeisen markkinakontekstin dokumentti-ID:t.
-        Tätä metodia käytetään arvioimaan datapisteiden määrä ilman että kaikkia datapisteitä haetaan.
+        Fetches the first and last market context document IDs for a pool.
+        This method is used to estimate the number of datapoints without fetching all datapoints.
         
         Args:
-            pool_id: Poolin ID
+            pool_id: Pool ID
             
         Returns:
-            tuple: (ensimmäinen dokumentti-ID, viimeinen dokumentti-ID) tai (None, None) jos dokumentteja ei löydy
+            tuple: (first document ID, last document ID) or (None, None) if no documents are found
         """
         if not self.db:
             logger.error("Firebase not initialized, cannot get document IDs")
             return None, None
             
         try:
-            # Kokeillaan ensin hakea marketContext/{pool_id}/marketContexts kokoelmasta
+            # First try to fetch from marketContext/{pool_id}/marketContexts collection
             contexts_ref = self.db.collection("marketContext").document(pool_id).collection("marketContexts")
             
-            # Tarkistetaan onko dataa olemassa tällä polulla
+            # Check if data exists at this path
             test_docs = list(contexts_ref.limit(1).stream())
             
-            # Jos ei löydy, kokeillaan suoraan marketContext kokoelmaa
+            # If not found, try directly the marketContext collection
             if not test_docs:
-                logger.debug(f"Ei löytynyt dataa polulta marketContext/{pool_id}/marketContexts, kokeillaan suoraan marketContext")
-                # Kokeillaan marketContext-kokoelmaa, missä ID:t voivat olla muotoa {pool_id}_timestamp
+                logger.debug(f"No data found at path marketContext/{pool_id}/marketContexts, trying directly marketContext")
+                # Try marketContext collection, where IDs can be in the format {pool_id}_timestamp
                 contexts_ref = self.db.collection("marketContext")
                 
-                # Hae ensimmäinen dokumentti aikajärjestyksessä (vanhin ensin)
-                # Haetaan dokumentit, joissa ID alkaa poolID:llä
+                # Get the first document in chronological order (oldest first)
+                # Find documents where ID starts with poolID
                 prefix = f"{pool_id}_"
                 first_doc_query = contexts_ref.where("__name__", ">=", prefix).where("__name__", "<=", prefix + "\uf8ff").order_by("__name__").limit(1)
                 first_docs = list(first_doc_query.stream())
                 
                 if not first_docs:
-                    logger.debug(f"Poolille {pool_id} ei löytynyt ensimmäistä dokumenttia suoraan marketContext-kokoelmasta")
+                    logger.debug(f"No first document found for pool {pool_id} directly from marketContext collection")
                     return None, None
                 
                 first_doc = first_docs[0]
                 first_id = first_doc.id
                 
-                # Hae viimeinen dokumentti (uusin)
+                # Get the last document (newest)
                 try:
                     from google.cloud.firestore_v1 import Query
                     last_doc_query = contexts_ref.where("__name__", ">=", prefix).where("__name__", "<=", prefix + "\uf8ff").order_by("__name__", direction=Query.DESCENDING).limit(1)
                 except (ImportError, AttributeError):
-                    last_doc_query = contexts_ref.where("__name__", ">=", prefix).where("__name__", "<=", prefix + "\uf8ff").order_by("__name__", direction="DESCENDING").limit(1)
+                    # If it's not available, use the string directly
+                    last_doc_query = contexts_ref.order_by("timestamp", direction="DESCENDING").limit(1)
                     
                 last_docs = list(last_doc_query.stream())
                 
                 if not last_docs:
-                    logger.debug(f"Poolille {pool_id} ei löytynyt viimeistä dokumenttia")
+                    logger.debug(f"No last document found for pool {pool_id}")
                     return first_id, None
                 
                 last_doc = last_docs[0]
                 last_id = last_doc.id
                 
-                logger.debug(f"Poolille {pool_id} löytyi dokumentteja suoraan marketContext-kokoelmasta välillä {first_id} - {last_id}")
+                # Try to get timestamp values to improve the estimate
+                first_timestamp = None
+                last_timestamp = None
+                
+                try:
+                    if 'timestamp' in first_doc.to_dict():
+                        first_timestamp = first_doc.to_dict()['timestamp']
+                    if 'timestamp' in last_doc.to_dict():
+                        last_timestamp = last_doc.to_dict()['timestamp']
+                        
+                    # Log timestamp differences for debugging
+                    if first_timestamp and last_timestamp:
+                        time_diff = last_timestamp - first_timestamp
+                        logger.debug(f"Pool {pool_id} timeline: {first_timestamp} - {last_timestamp}, difference {time_diff}")
+                except Exception as e:
+                    logger.debug(f"Failed to retrieve timestamp values: {e}")
+                
+                logger.debug(f"Documents found for pool {pool_id} between {first_id} - {last_id}")
                 return first_id, last_id
             
-            # Jatketaan alkuperäisellä polulla marketContext/{pool_id}/marketContexts
-            # Hae ensimmäinen dokumentti aikajärjestyksessä (vanhin ensin)
-            # Käytetään timestamp-kenttää, koska se on todennäköisesti jo indeksoitu
+            # Continue with the original path marketContext/{pool_id}/marketContexts
+            # Get the first document in chronological order (oldest first)
+            # Use the timestamp field as it's likely already indexed
             first_doc_query = contexts_ref.order_by("timestamp").limit(1)
             first_docs = list(first_doc_query.stream())
             
             if not first_docs:
-                logger.debug(f"Poolille {pool_id} ei löytynyt ensimmäistä dokumenttia")
+                logger.debug(f"No first document found for pool {pool_id}")
                 return None, None
             
             first_doc = first_docs[0]
             first_id = first_doc.id
             
-            # Hae viimeinen dokumentti (uusin)
+            # Get the last document (newest)
             try:
-                # Kokeillaan ensin google.cloud.firestore -kirjaston tapaa
+                # First try the google.cloud.firestore library method
                 from google.cloud.firestore_v1 import Query
                 last_doc_query = contexts_ref.order_by("timestamp", direction=Query.DESCENDING).limit(1)
             except (ImportError, AttributeError):
-                # Jos se ei ole käytettävissä, käytetään suoraan merkkijonoa
+                # If it's not available, use the string directly
                 last_doc_query = contexts_ref.order_by("timestamp", direction="DESCENDING").limit(1)
                 
             last_docs = list(last_doc_query.stream())
             
             if not last_docs:
-                logger.debug(f"Poolille {pool_id} ei löytynyt viimeistä dokumenttia")
+                logger.debug(f"No last document found for pool {pool_id}")
                 return first_id, None
             
             last_doc = last_docs[0]
             last_id = last_doc.id
             
-            # Yritä saada myös timestamp-arvot arvion tarkentamiseksi
+            # Try to get timestamp values to improve the estimate
             first_timestamp = None
             last_timestamp = None
             
@@ -731,13 +750,13 @@ class FirebaseService:
                 # Log timestamp differences for debugging
                 if first_timestamp and last_timestamp:
                     time_diff = last_timestamp - first_timestamp
-                    logger.debug(f"Poolilla {pool_id} aikajana: {first_timestamp} - {last_timestamp}, eroa {time_diff}")
+                    logger.debug(f"Pool {pool_id} timeline: {first_timestamp} - {last_timestamp}, difference {time_diff}")
             except Exception as e:
-                logger.debug(f"Ei onnistuttu hakemaan timestamp-arvoja: {e}")
+                logger.debug(f"Failed to retrieve timestamp values: {e}")
             
-            logger.debug(f"Poolille {pool_id} löytyi dokumentteja välillä {first_id} - {last_id}")
+            logger.debug(f"Documents found for pool {pool_id} between {first_id} - {last_id}")
             return first_id, last_id
             
         except Exception as e:
-            logger.error(f"Virhe haettaessa dokumentti-ID:tä poolille {pool_id}: {e}")
+            logger.error(f"Error retrieving document IDs for pool {pool_id}: {e}")
             return None, None
