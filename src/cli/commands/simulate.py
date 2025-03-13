@@ -6,12 +6,13 @@ This module provides command-line interface for running trading simulations.
 
 import argparse
 import logging
-from typing import Any, Dict, Optional
+
+# from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
 # Import the required modules
-from src.data.firebase_service import FirebaseService
+# from src.data.firebase_service import FirebaseService
 from src.simulation.backtest_runner import BacktestRunner
 
 
