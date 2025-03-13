@@ -62,7 +62,7 @@ MINIMAL_REQUIRED_FIELDS = [
 
 # Full set of required fields
 REQUIRED_FIELDS = [
-    # Market Cap Fields
+    # Market Cap Fields 10
     "marketCap",
     "athMarketCap",
     "minMarketCap",
@@ -73,12 +73,11 @@ REQUIRED_FIELDS = [
     "maMarketCap10s",
     "maMarketCap30s",
     "maMarketCap60s",
-    # Price Fields
+    # Price Fields 3
     "currentPrice",
-    "lastPrice",  # Missing in all pools
     "priceChangePercent",
     "priceChangeFromStart",
-    # Holder Fields
+    # Holder Fields 8
     "holdersCount",
     "initialHoldersCount",
     "holdersGrowthFromStart",
@@ -86,20 +85,19 @@ REQUIRED_FIELDS = [
     "holderDelta10s",
     "holderDelta30s",
     "holderDelta60s",
-    # Volume Fields
+    # Volume Fields 4
     "buyVolume5s",
     "buyVolume10s",
     "netVolume5s",
     "netVolume10s",
-    "totalVolume",  # Missing in all pools
-    # Buy Classification Fields
+    # Buy Classification Fields 6
     "largeBuy5s",
     "largeBuy10s",
     "bigBuy5s",
     "bigBuy10s",
     "superBuy5s",
     "superBuy10s",
-    # Trade Data - 5s
+    # Trade Data - 5s 14
     "trade_last5Seconds.volume.buy",
     "trade_last5Seconds.volume.sell",
     "trade_last5Seconds.volume.bot",
@@ -114,7 +112,7 @@ REQUIRED_FIELDS = [
     "trade_last5Seconds.tradeCount.sell.big",
     "trade_last5Seconds.tradeCount.sell.super",
     "trade_last5Seconds.tradeCount.bot",
-    # Trade Data - 10s
+    # Trade Data - 10s 14
     "trade_last10Seconds.volume.buy",
     "trade_last10Seconds.volume.sell",
     "trade_last10Seconds.volume.bot",
@@ -129,10 +127,11 @@ REQUIRED_FIELDS = [
     "trade_last10Seconds.tradeCount.sell.big",
     "trade_last10Seconds.tradeCount.sell.super",
     "trade_last10Seconds.tradeCount.bot",
-    # Metadata
+    # Metadata 2
     "poolAddress",
     "timeFromStart",
-    "creationTime",
+
+    
 ]
 
 
