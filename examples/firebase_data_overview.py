@@ -9,9 +9,8 @@ showing pool counts, available fields, data ranges, and basic statistics.
 import os
 import sys
 import logging
-import pandas as pd
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime
 from tabulate import tabulate
 
 # Set up paths
@@ -24,7 +23,6 @@ logger = logging.getLogger(__name__)
 
 # Import Firebase utilities
 from src.data.firebase_service import FirebaseService
-from src.utils.firebase_utils import initialize_firebase, get_pool_ids
 
 
 def main():

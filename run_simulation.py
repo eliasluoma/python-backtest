@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import logging
-import json
 import sys
 from typing import Dict, Optional, List
 
@@ -41,8 +40,8 @@ class BacktestRunner:
         self.early_mc_limit = early_mc_limit
         self.min_delay = min_delay
         self.max_delay = max_delay
-        self.buy_opportunities = []
-        self.trade_results = []
+        self.buy_opportunities: List[Dict] = []
+        self.trade_results: List[Dict] = []
 
     def run_simulation(
         self,
