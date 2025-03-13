@@ -23,6 +23,7 @@ pytz = "*"
 tqdm = "*"
 python-dotenv = "*"
 imblearn = "*"
+tabulate = "*"
 
 [requires]
 python_version = "3.11"

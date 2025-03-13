@@ -15,7 +15,7 @@ Fields are organized into categories:
 
 ## SQLite Schema
 
-The `updated_schema.sql` file in the `src/data` directory defines the database structure for the SQLite cache. It includes tables for:
+The `schema.sql` file in the `src/data` directory defines the database structure for the SQLite cache. It includes tables for:
 
 - **Pools**: Basic pool information and metadata
 - **Market Data**: Time-series data for each pool
@@ -45,7 +45,7 @@ from pathlib import Path
 import sqlite3
 
 # Path to the schema file
-schema_path = Path("src/data/updated_schema.sql")
+schema_path = Path("src/data/schema.sql")
 
 # Create a database connection
 conn = sqlite3.connect("cache/pools.db")
