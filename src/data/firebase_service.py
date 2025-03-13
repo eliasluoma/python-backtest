@@ -171,12 +171,12 @@ class FirebaseService:
         logger.info(f"Found {len(result)} pools with recent data")
         return result
 
-    def get_available_pools(self, limit: int = 100) -> List[str]:
+    def get_available_pools(self, limit: Optional[int] = None) -> List[str]:
         """
         Get a list of available pool IDs.
 
         Args:
-            limit: Maximum number of pool IDs to return
+            limit: Maximum number of pool IDs to return (None means no limit)
 
         Returns:
             List of pool IDs

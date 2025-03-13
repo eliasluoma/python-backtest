@@ -40,7 +40,7 @@ def add_cache_subparser(subparsers):
         "--pools", "-p", nargs="+", help="Specific pools to import (if omitted, imports pools up to the limit)"
     )
     import_parser.add_argument(
-        "--limit", "-l", type=int, default=100, help="Maximum number of pools to import (default: 100)"
+        "--limit", "-l", type=int, default=None, help="Maximum number of pools to import (default: all pools)"
     )
     import_parser.add_argument(
         "--min-points",
@@ -239,7 +239,7 @@ def import_pools(
     cache_service: DataCacheService,
     firebase_service: FirebaseService,
     pool_ids: List[str] = None,
-    limit: int = 100,
+    limit: Optional[int] = None,
     min_data_points: int = 600,
 ) -> bool:
     """
@@ -249,26 +249,30 @@ def import_pools(
         cache_service: The data cache service instance
         firebase_service: The Firebase service instance
         pool_ids: Specific pool IDs to import (if None, imports pools up to the limit)
-        limit: Maximum number of pools to import
+        limit: Maximum number of pools to import (if None, imports all available pools)
         min_data_points: Minimum number of data points required for a pool to be imported
 
     Returns:
         bool: Whether the import was successful
     """
-    logger.info(f"Starting import with limit={limit}, min_data_points={min_data_points}")
+    logger.info(f"Starting import with limit={limit if limit else 'all'}, min_data_points={min_data_points}")
 
     # If specific pools are provided, use those
     if pool_ids:
         logger.info(f"Importing {len(pool_ids)} specific pools")
         return update_specific_pools(cache_service, firebase_service, pool_ids, min_data_points)
 
-    # Otherwise, get all available pools up to 2x the limit (to account for filtering)
-    all_pools = firebase_service.get_available_pools(limit=limit * 2)
+    # Otherwise, get all available pools
+    # If limit is None, don't apply a limit to Firebase query
+    fetch_limit = None if limit is None else limit * 2  # Double the limit to account for filtering
+    all_pools = firebase_service.get_available_pools(limit=fetch_limit)
     if not all_pools:
         logger.error("No pools found in Firebase")
         return False
 
-    logger.info(f"Found {len(all_pools)} pools in Firebase, importing up to {limit} pools")
+    logger.info(
+        f"Found {len(all_pools)} pools in Firebase, importing {'all' if limit is None else f'up to {limit}'} pools"
+    )
 
     success_count = 0
     error_count = 0
@@ -276,7 +280,8 @@ def import_pools(
     processed_count = 0
 
     for pool_id in all_pools:
-        if processed_count >= limit:
+        # If limit is specified and we've reached it, break
+        if limit is not None and processed_count >= limit:
             logger.info(f"Reached import limit of {limit} pools")
             break
 
