@@ -10,23 +10,12 @@ These constants help maintain consistency across the codebase.
 FIELD_TIMESTAMP = "timestamp"
 
 # Numeric Fields
-# These fields store decimal values (prices, volumes, rates)
+# These fields store decimal values (prices, volumes, rates) that are REAL in database
 FIELD_TIMEFROMSTART = "timeFromStart"
-FIELD_ATHMARKETCAP = "athMarketCap"
 FIELD_BUYVOLUME10S = "buyVolume10s"
 FIELD_BUYVOLUME5S = "buyVolume5s"
-FIELD_MAMARKETCAP10S = "maMarketCap10s"
-FIELD_MAMARKETCAP30S = "maMarketCap30s"
-FIELD_MAMARKETCAP60S = "maMarketCap60s"
-FIELD_MARKETCAP = "marketCap"
-FIELD_MARKETCAPCHANGE10S = "marketCapChange10s"
-FIELD_MARKETCAPCHANGE30S = "marketCapChange30s"
-FIELD_MARKETCAPCHANGE5S = "marketCapChange5s"
-FIELD_MARKETCAPCHANGE60S = "marketCapChange60s"
-FIELD_MINMARKETCAP = "minMarketCap"
 FIELD_NETVOLUME10S = "netVolume10s"
 FIELD_NETVOLUME5S = "netVolume5s"
-FIELD_PRICECHANGEFROMSTART = "priceChangeFromStart"
 FIELD_PRICECHANGEPERCENT = "priceChangePercent"
 
 # Integer Fields
@@ -46,9 +35,20 @@ FIELD_SUPERBUY10S = "superBuy10s"
 FIELD_SUPERBUY5S = "superBuy5s"
 
 # String Fields
-# These fields store text data (identifiers, names, addresses)
+# These fields store text data (identifiers, names, addresses) and numeric values as strings
+FIELD_ATHMARKETCAP = "athMarketCap"
 FIELD_CURRENTPRICE = "currentPrice"
+FIELD_MAMARKETCAP10S = "maMarketCap10s"
+FIELD_MAMARKETCAP30S = "maMarketCap30s"
+FIELD_MAMARKETCAP60S = "maMarketCap60s"
+FIELD_MARKETCAP = "marketCap"
+FIELD_MARKETCAPCHANGE10S = "marketCapChange10s"
+FIELD_MARKETCAPCHANGE30S = "marketCapChange30s"
+FIELD_MARKETCAPCHANGE5S = "marketCapChange5s"
+FIELD_MARKETCAPCHANGE60S = "marketCapChange60s"
+FIELD_MINMARKETCAP = "minMarketCap"
 FIELD_POOLADDRESS = "poolAddress"
+FIELD_PRICECHANGEFROMSTART = "priceChangeFromStart"
 
 # Special Fields
 # These fields store special data or are used for specific purposes
@@ -66,21 +66,10 @@ TIMESTAMP_FIELDS = [
 ]
 
 NUMERIC_FIELDS = [
-    FIELD_ATHMARKETCAP,
     FIELD_BUYVOLUME10S,
     FIELD_BUYVOLUME5S,
-    FIELD_MAMARKETCAP10S,
-    FIELD_MAMARKETCAP30S,
-    FIELD_MAMARKETCAP60S,
-    FIELD_MARKETCAP,
-    FIELD_MARKETCAPCHANGE10S,
-    FIELD_MARKETCAPCHANGE30S,
-    FIELD_MARKETCAPCHANGE5S,
-    FIELD_MARKETCAPCHANGE60S,
-    FIELD_MINMARKETCAP,
     FIELD_NETVOLUME10S,
     FIELD_NETVOLUME5S,
-    FIELD_PRICECHANGEFROMSTART,
     FIELD_PRICECHANGEPERCENT,
 ]
 
@@ -101,8 +90,19 @@ INTEGER_FIELDS = [
 ]
 
 STRING_FIELDS = [
+    FIELD_ATHMARKETCAP,
     FIELD_CURRENTPRICE,
+    FIELD_MAMARKETCAP10S,
+    FIELD_MAMARKETCAP30S,
+    FIELD_MAMARKETCAP60S,
+    FIELD_MARKETCAP,
+    FIELD_MARKETCAPCHANGE10S,
+    FIELD_MARKETCAPCHANGE30S,
+    FIELD_MARKETCAPCHANGE5S,
+    FIELD_MARKETCAPCHANGE60S,
+    FIELD_MINMARKETCAP,
     FIELD_POOLADDRESS,
+    FIELD_PRICECHANGEFROMSTART,
 ]
 
 COMPLEX_FIELDS = [

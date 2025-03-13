@@ -1028,20 +1028,57 @@ class DataCacheService:
                 if not isinstance(trade_data, dict):
                     continue
 
-                # Extract volume fields
+                # Extract volume fields - preserve them as strings
                 for vol_type in ["buy", "sell", "bot"]:
                     col_name = f"trade_last{period}Seconds_volume_{vol_type}"
-                    result_df.at[i, col_name] = get_nested(trade_data, f"volume.{vol_type}")
+                    value = get_nested(trade_data, f"volume.{vol_type}")
+                    # Keep string values as strings, especially for volume fields
+                    if isinstance(value, str):
+                        # Ensure it's a valid numeric string
+                        try:
+                            # If it can be converted to float, keep as string
+                            float(value)
+                            result_df.at[i, col_name] = value
+                        except (ValueError, TypeError):
+                            # If not a valid numeric string, set to "0.0"
+                            result_df.at[i, col_name] = "0.0"
+                    elif isinstance(value, (int, float)):
+                        # Convert numeric values to strings consistently with Firebase format
+                        # This preserves the formatting expectations of the code
+                        result_df.at[i, col_name] = str(value)
+                    else:
+                        # For None or other values, use "0.0"
+                        result_df.at[i, col_name] = "0.0"
 
-                # Extract tradeCount fields
+                # Extract tradeCount fields - keep as integers
                 for side in ["buy", "sell"]:
                     for size in ["small", "medium", "large", "big", "super"]:
                         col_name = f"trade_last{period}Seconds_tradeCount_{side}_{size}"
-                        result_df.at[i, col_name] = get_nested(trade_data, f"tradeCount.{side}.{size}")
+                        value = get_nested(trade_data, f"tradeCount.{side}.{size}")
+                        # Ensure tradeCount values are integers
+                        if isinstance(value, (int, float)):
+                            result_df.at[i, col_name] = int(value)
+                        elif isinstance(value, str):
+                            try:
+                                result_df.at[i, col_name] = int(float(value))
+                            except (ValueError, TypeError):
+                                result_df.at[i, col_name] = 0
+                        else:
+                            result_df.at[i, col_name] = 0
 
-                # Extract bot trade count
+                # Extract bot trade count - keep as integer
                 col_name = f"trade_last{period}Seconds_tradeCount_bot"
-                result_df.at[i, col_name] = get_nested(trade_data, "tradeCount.bot")
+                value = get_nested(trade_data, "tradeCount.bot")
+                # Ensure bot count is an integer
+                if isinstance(value, (int, float)):
+                    result_df.at[i, col_name] = int(value)
+                elif isinstance(value, str):
+                    try:
+                        result_df.at[i, col_name] = int(float(value))
+                    except (ValueError, TypeError):
+                        result_df.at[i, col_name] = 0
+                else:
+                    result_df.at[i, col_name] = 0
 
         # Remove the original nested columns
         for col in trade_columns:

@@ -209,7 +209,45 @@ class FirebaseService:
             df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
 
         # Sort by pool and timestamp
-        df = df.sort_values(["poolAddress", "timestamp"])
+        if "poolAddress" in df.columns:
+            df = df.sort_values(["poolAddress", "timestamp"])
+        else:
+            df = df.sort_values("timestamp")
+
+        # Litistä sisäkkäiset rakenteet riveittäin
+        if not df.empty:
+            # Käy läpi jokainen rivi, litistä sisäkkäiset rakenteet
+            flattened_rows = []
+            
+            for _, row in df.iterrows():
+                # Muunna pandas Series sanakirjaksi
+                row_dict = row.to_dict()
+                
+                # Litistä sisäkkäiset rakenteet
+                flat_row = self.prepare_for_database(row_dict)
+                
+                # Lisää litistetty rivi tuloksiin
+                flattened_rows.append(flat_row)
+            
+            # Luo uusi DataFrame litistetystä datasta
+            df = pd.DataFrame(flattened_rows)
+
+        # Kentät, jotka ovat stringejä alkuperäisessä datassa
+        numeric_string_columns = [
+            "athMarketCap", "maMarketCap10s", "maMarketCap30s", "maMarketCap60s", 
+            "marketCap", "marketCapChange10s", "marketCapChange30s", "marketCapChange5s", 
+            "marketCapChange60s", "minMarketCap", "priceChangeFromStart", "currentPrice"
+        ]
+        
+        # Muunna string-muotoiset numerot float-tyyppisiksi dataframessa
+        for col in numeric_string_columns:
+            if col in df.columns:
+                # Yritä muuntaa numeriksi (käsittele virheet)
+                try:
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+                except Exception as e:
+                    logger.warning(f"Virhe muunnettaessa kenttää {col} numeroksi: {e}")
+                    # Virhetilanteessa jätä kenttä ennalleen
 
         # Fill missing values with appropriate defaults
         # Note: These column names should match what's expected by simulators
@@ -229,6 +267,18 @@ class FirebaseService:
         for col in numeric_columns:
             if col in df.columns:
                 df[col] = df[col].fillna(0)
+        
+        # Varmista, että volume-kentät säilyvät sopivassa muodossa
+        volume_fields = [col for col in df.columns if 'volume' in col.lower()]
+        for vol_field in volume_fields:
+            if vol_field in df.columns:
+                # Jos kenttä on tietokannassa REAL-tyyppinen mutta tiedostossa string,
+                # ylläpidetään numeroformaattia joka toimii tietokannassa
+                if df[vol_field].dtype == 'object':  # String-tyyppinen
+                    try:
+                        df[vol_field] = pd.to_numeric(df[vol_field], errors='coerce')
+                    except Exception as e:
+                        logger.warning(f"Virhe muunnettaessa volume-kenttää {vol_field}: {e}")
 
         # Calculate additional derived metrics if needed
         # This will be expanded based on requirements
@@ -298,6 +348,16 @@ class FirebaseService:
                         # Skip invalid timestamps
                         continue
 
+                # Convert currentPrice to float if it's a string
+                if "currentPrice" in data and isinstance(data["currentPrice"], str):
+                    try:
+                        data["currentPrice"] = float(data["currentPrice"])
+                    except (ValueError, TypeError):
+                        data["currentPrice"] = 0.0
+
+                # Normalize pool data structure (Pool 1 format -> Pool 2 format)
+                data = self.normalize_pool_format(data)
+
                 data["poolAddress"] = pool_address
                 pool_contexts.append(data)
 
@@ -315,6 +375,151 @@ class FirebaseService:
         except Exception as e:
             logger.error(f"Error fetching data for pool {pool_address}: {str(e)}")
             return pd.DataFrame()  # Return empty DataFrame on error
+
+    def normalize_pool_format(self, data: dict) -> dict:
+        """
+        Normalize pool data format from Pool 1 (flat) to Pool 2 (nested) structure.
+        
+        Pool 1: Litteä rakenne, jossa kentät ovat muodossa 'trade_last10Seconds.volume.buy'
+        Pool 2: Sisäkkäinen rakenne, jossa kentät ovat JSON-objekteja, esim. 'tradeLast10Seconds': {'volume': {'buy': '123'}}
+        
+        Args:
+            data: Dictionary containing pool data
+            
+        Returns:
+            Dictionary with normalized structure (Pool 2 format)
+        """
+        result = data.copy()
+        
+        # Check if this is Pool 1 format by looking for keys with 'trade_last' prefix
+        pool1_keys = [k for k in data.keys() if k.startswith('trade_last') and '.' in k]
+        
+        if not pool1_keys:
+            # Already Pool 2 format or no trade data, return as is
+            return result
+        
+        logger.info(f"Detected Pool 1 format with {len(pool1_keys)} trade fields. Converting to Pool 2 format.")
+        
+        # Group keys by period (5s or 10s)
+        for period in [5, 10]:
+            # Dictionary to build the nested structure
+            nested_data = {}
+            
+            # Find all keys for this period
+            period_keys = [k for k in pool1_keys if f'trade_last{period}Seconds' in k]
+            
+            if not period_keys:
+                continue
+                
+            for key in period_keys:
+                # Remove the key from result as we're converting it to nested
+                value = result.pop(key, None)
+                if value is None:
+                    continue
+                
+                # Parse the path: 'trade_last5Seconds.volume.buy' -> ['trade_last5Seconds', 'volume', 'buy']
+                parts = key.split('.')
+                if len(parts) < 3:
+                    continue
+                
+                # Get components
+                category = parts[1]  # 'volume' or 'tradeCount'
+                
+                # For tradeCount we need to handle one more level
+                if category == 'tradeCount' and len(parts) == 4:
+                    side = parts[2]      # 'buy' or 'sell'
+                    size = parts[3]      # 'small', 'medium', 'large', 'big', 'super'
+                    
+                    # Initialize nested dictionaries if not exist
+                    nested_data.setdefault(category, {})
+                    nested_data[category].setdefault(side, {})
+                    
+                    # Set the value
+                    nested_data[category][side][size] = value
+                elif category == 'tradeCount' and len(parts) == 3 and parts[2] == 'bot':
+                    # Special case for bot trade count which is not nested under buy/sell
+                    nested_data.setdefault(category, {})
+                    nested_data[category]['bot'] = value
+                elif category == 'volume':
+                    # Initialize volume category if not exist
+                    nested_data.setdefault(category, {})
+                    
+                    # Set the value: parts[2] is 'buy', 'sell', or 'bot'
+                    type_key = parts[2]
+                    nested_data[category][type_key] = value
+            
+            # Add the nested data to result with camelCase key
+            if nested_data:
+                camel_key = f"tradeLast{period}Seconds"
+                result[camel_key] = nested_data
+        
+        # Convert snake_case keys to camelCase for consistency
+        snake_case_keys = [k for k in result.keys() if '_' in k and not k.startswith('trade_last')]
+        for key in snake_case_keys:
+            if key in result:
+                # Convert snake_case to camelCase (e.g., some_key -> someKey)
+                camel_key = ''.join([key.split('_')[0]] + [part.capitalize() for part in key.split('_')[1:]])
+                
+                # Only apply if the camelCase key doesn't already exist
+                if camel_key not in result:
+                    result[camel_key] = result[key]
+                    result.pop(key)  # Remove the snake_case key after converting
+        
+        # Ensure tradeLast5Seconds and tradeLast10Seconds exist with correct structure
+        for period in [5, 10]:
+            trade_key = f"tradeLast{period}Seconds"
+            
+            # If the key doesn't exist, create it with empty structure
+            if trade_key not in result:
+                result[trade_key] = {
+                    "volume": {"buy": "0", "sell": "0", "bot": "0"},
+                    "tradeCount": {
+                        "bot": 0,
+                        "buy": {"small": 0, "medium": 0, "large": 0, "big": 0, "super": 0},
+                        "sell": {"small": 0, "medium": 0, "large": 0, "big": 0, "super": 0}
+                    }
+                }
+            else:
+                # Ensure the structure is complete
+                trade_data = result[trade_key]
+                
+                # Ensure volume exists with all fields
+                if "volume" not in trade_data:
+                    trade_data["volume"] = {"buy": "0", "sell": "0", "bot": "0"}
+                else:
+                    for key in ["buy", "sell", "bot"]:
+                        if key not in trade_data["volume"]:
+                            trade_data["volume"][key] = "0"
+                
+                # Ensure tradeCount exists with all fields
+                if "tradeCount" not in trade_data:
+                    trade_data["tradeCount"] = {
+                        "bot": 0,
+                        "buy": {"small": 0, "medium": 0, "large": 0, "big": 0, "super": 0},
+                        "sell": {"small": 0, "medium": 0, "large": 0, "big": 0, "super": 0}
+                    }
+                else:
+                    # Ensure bot exists
+                    if "bot" not in trade_data["tradeCount"]:
+                        trade_data["tradeCount"]["bot"] = 0
+                    
+                    # Ensure buy exists with all sizes
+                    if "buy" not in trade_data["tradeCount"]:
+                        trade_data["tradeCount"]["buy"] = {"small": 0, "medium": 0, "large": 0, "big": 0, "super": 0}
+                    else:
+                        for size in ["small", "medium", "large", "big", "super"]:
+                            if size not in trade_data["tradeCount"]["buy"]:
+                                trade_data["tradeCount"]["buy"][size] = 0
+                    
+                    # Ensure sell exists with all sizes
+                    if "sell" not in trade_data["tradeCount"]:
+                        trade_data["tradeCount"]["sell"] = {"small": 0, "medium": 0, "large": 0, "big": 0, "super": 0}
+                    else:
+                        for size in ["small", "medium", "large", "big", "super"]:
+                            if size not in trade_data["tradeCount"]["sell"]:
+                                trade_data["tradeCount"]["sell"][size] = 0
+        
+        return result
 
     def get_pools_datapoints_counts(self, pool_ids: List[str]) -> Dict[str, int]:
         """
@@ -760,3 +965,103 @@ class FirebaseService:
         except Exception as e:
             logger.error(f"Error retrieving document IDs for pool {pool_id}: {e}")
             return None, None
+
+    def flatten_nested_fields(self, data: dict, parent_key: str = '', sep: str = '_') -> dict:
+        """
+        Litistää sisäkkäiset rakenteet yksitasoiseksi sanakirjaksi.
+        
+        Esimerkiksi sisäkkäinen rakenne:
+        {
+            "tradeLast5Seconds": {
+                "volume": {
+                    "buy": "0.0"
+                }
+            }
+        }
+        
+        Muunnetaan muotoon:
+        {
+            "trade_last5Seconds_volume_buy": "0.0"
+        }
+        
+        Args:
+            data: Sanakirja, joka sisältää mahdollisesti sisäkkäisiä rakenteita
+            parent_key: Ylemmän tason avain (käytetään rekursiossa)
+            sep: Erotinmerkki avainten välillä (oletuksena alaviiva)
+            
+        Returns:
+            Litistetty sanakirja ilman sisäkkäisiä rakenteita
+        """
+        items = {}
+        for k, v in data.items():
+            # Convert camelCase to snake_case for specific keys
+            if parent_key == '' and k in ["tradeLast5Seconds", "tradeLast10Seconds"]:
+                # Convert tradeLast to trade_last
+                new_key = f"trade_last{k[9:]}"
+            else:
+                new_key = f"{parent_key}{sep}{k}" if parent_key else k
+            
+            if isinstance(v, dict):
+                # Rekursiivisesti litistä sisäkkäiset rakenteet
+                items.update(self.flatten_nested_fields(v, new_key, sep))
+            else:
+                # Lisää lehtisolmut litistettyyn sanakirjaan
+                items[new_key] = v
+                
+        return items
+
+    def prepare_for_database(self, data: dict) -> dict:
+        """
+        Valmistele data tietokantaa varten litistämällä sisäkkäiset rakenteet.
+        Muuntaa Pool2-formaatin (sisäkkäiset tradeLast-rakenteet) litteäksi käyttäen alaviivaa erottimena.
+        Säilyttää alkuperäiset tietotyypit, kuten stringeinä tulevat numerot stringeinä.
+        
+        Args:
+            data: Sanakirja, joka sisältää mahdollisesti sisäkkäisiä rakenteita
+            
+        Returns:
+            Litistetty sanakirja, jossa kaikki kentät ovat yhdessä tasossa ja oikeilla tietotyypeillä
+        """
+        # Varmista, että data on Pool2-formaatissa
+        normalized_data = self.normalize_pool_format(data)
+        
+        # Kopioi litistettävä data
+        flattened_data = {}
+        
+        # Käsittele erikseen sisäkkäiset trade-rakenteet
+        trade_fields = {}
+        
+        # Nämä kentät ovat alun perin stringejä, joten säilytä ne stringeinä
+        string_numeric_fields = {
+            "athMarketCap", "maMarketCap10s", "maMarketCap30s", "maMarketCap60s", 
+            "marketCap", "marketCapChange10s", "marketCapChange30s", "marketCapChange5s", 
+            "marketCapChange60s", "minMarketCap", "priceChangeFromStart", "currentPrice"
+        }
+        
+        for key, value in normalized_data.items():
+            if key in ["tradeLast5Seconds", "tradeLast10Seconds"] and isinstance(value, dict):
+                # Litistä sisäkkäiset tradeLast-rakenteet
+                nested_flat = self.flatten_nested_fields(value, key)
+                
+                # Varmista että volume-kentät säilyvät stringeinä
+                for nested_key, nested_value in nested_flat.items():
+                    if ".volume." in nested_key:
+                        # Varmista että volume on string
+                        if not isinstance(nested_value, str):
+                            nested_flat[nested_key] = str(nested_value)
+                
+                trade_fields.update(nested_flat)
+            elif key in string_numeric_fields:
+                # Varmista että nämä kentät ovat stringejä
+                if not isinstance(value, str) and value is not None:
+                    flattened_data[key] = str(value)
+                else:
+                    flattened_data[key] = value
+            else:
+                # Kopioi normaalit kentät sellaisenaan
+                flattened_data[key] = value
+        
+        # Yhdistä kaikki kentät
+        flattened_data.update(trade_fields)
+        
+        return flattened_data

@@ -33,22 +33,22 @@ CREATE TABLE IF NOT EXISTS market_data (
     poolAddress TEXT NOT NULL,
     timestamp TIMESTAMP NOT NULL,
     
-    -- Market Cap Fields - 10 fields
-    marketCap REAL,
-    athMarketCap REAL,
-    minMarketCap REAL,
-    marketCapChange5s REAL,
-    marketCapChange10s REAL,
-    marketCapChange30s REAL,
-    marketCapChange60s REAL,
-    maMarketCap10s REAL,
-    maMarketCap30s REAL,
-    maMarketCap60s REAL,
+    -- Market Cap Fields - 10 fields - Muutetaan string-tyyppisiksi
+    marketCap TEXT,             -- String-tyyppinen Firebasessa
+    athMarketCap TEXT,          -- String-tyyppinen Firebasessa
+    minMarketCap TEXT,          -- String-tyyppinen Firebasessa
+    marketCapChange5s TEXT,     -- String-tyyppinen Firebasessa
+    marketCapChange10s TEXT,    -- String-tyyppinen Firebasessa
+    marketCapChange30s TEXT,    -- String-tyyppinen Firebasessa
+    marketCapChange60s TEXT,    -- String-tyyppinen Firebasessa
+    maMarketCap10s TEXT,        -- String-tyyppinen Firebasessa
+    maMarketCap30s TEXT,        -- String-tyyppinen Firebasessa
+    maMarketCap60s TEXT,        -- String-tyyppinen Firebasessa
     
     -- Price Fields - 3 fields
-    currentPrice REAL,
-    priceChangePercent REAL,
-    priceChangeFromStart REAL,
+    currentPrice TEXT,           -- String-tyyppinen Firebasessa
+    priceChangePercent REAL,     -- Number-tyyppinen Firebasessa
+    priceChangeFromStart TEXT,   -- String-tyyppinen Firebasessa
     
     -- Holder Fields - 8 fields
     holdersCount INTEGER,
@@ -74,9 +74,9 @@ CREATE TABLE IF NOT EXISTS market_data (
     superBuy10s INTEGER,
     
     -- Trade Data - 5s - 14 fields
-    trade_last5Seconds_volume_buy REAL,
-    trade_last5Seconds_volume_sell REAL,
-    trade_last5Seconds_volume_bot REAL,
+    trade_last5Seconds_volume_buy TEXT,      -- String-tyyppinen Firebasessa
+    trade_last5Seconds_volume_sell TEXT,     -- String-tyyppinen Firebasessa 
+    trade_last5Seconds_volume_bot TEXT,      -- String-tyyppinen Firebasessa
     trade_last5Seconds_tradeCount_buy_small INTEGER,
     trade_last5Seconds_tradeCount_buy_medium INTEGER,
     trade_last5Seconds_tradeCount_buy_large INTEGER,
@@ -90,9 +90,9 @@ CREATE TABLE IF NOT EXISTS market_data (
     trade_last5Seconds_tradeCount_bot INTEGER,
     
     -- Trade Data - 10s - 14 fields
-    trade_last10Seconds_volume_buy REAL,
-    trade_last10Seconds_volume_sell REAL,
-    trade_last10Seconds_volume_bot REAL,
+    trade_last10Seconds_volume_buy TEXT,     -- String-tyyppinen Firebasessa
+    trade_last10Seconds_volume_sell TEXT,    -- String-tyyppinen Firebasessa
+    trade_last10Seconds_volume_bot TEXT,     -- String-tyyppinen Firebasessa
     trade_last10Seconds_tradeCount_buy_medium INTEGER,
     trade_last10Seconds_tradeCount_buy_large INTEGER,
     trade_last10Seconds_tradeCount_buy_big INTEGER,
