@@ -2,15 +2,31 @@
 
 A backtesting framework for Solana token trading strategies using market data from Firebase.
 
+## Command-Line Interface
+
+The project provides a unified command-line interface for all functionality:
+
+```bash
+./solana_simulator.py [command] [options]
+```
+
+Available commands:
+- `simulate`: Run a trading simulation
+- `analyze`: Analyze market data
+- `export`: Export pool data to JSON files
+- `visualize`: Generate visualizations from data
+
+For detailed documentation of all commands and options, see the [CLI Guide](cli_guide.md).
+
 ## Project Structure
 
 ```
 python-backtest/
-├── legacy/                  # Legacy scripts (for reference)
-├── scripts/                 # Executable scripts
-│   ├── run_simulation.py    # Main simulation script
-│   └── test_sell_simulation.py # Sell strategy test script
+├── solana_simulator.py      # Main CLI entry point
 ├── src/                     # Source code
+│   ├── cli/                 # CLI implementation
+│   │   ├── commands/        # Command modules
+│   │   └── main.py          # CLI main module
 │   ├── config/              # Configuration settings
 │   ├── data/                # Data services
 │   │   ├── data_processor.py
@@ -25,7 +41,10 @@ python-backtest/
 │   ├── simulation/          # Simulator tests
 │   └── run_all_tests.py     # Test runner
 ├── docs/                    # Documentation
-└── fetch_firebase_data.py   # Data retrieval script
+├── scripts/                 # Legacy scripts (for reference)
+│   ├── run_simulation.py    # Legacy simulation script
+│   └── test_sell_simulation.py # Sell strategy test script
+└── legacy/                  # Legacy code (for reference)
 ```
 
 ## Features
