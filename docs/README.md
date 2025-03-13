@@ -14,6 +14,7 @@ Welcome to the documentation for the Solana Trading Strategy Simulator. This dir
 - [Buy Simulator Documentation](./buy_simulator.md) - Entry strategy implementation
 - [Sell Simulator Documentation](./sell_simulator.md) - Exit strategy implementation
 - [Pool Filtering Documentation](./pool_filtering.md) - Pool filtering criteria and implementation
+- [Cache System](./cache_guide.md) - SQLite-based caching for Python and TypeScript applications
 
 ### Additional Resources
 - [Firebase Data Schema](./firebase_data_schema.md) - Detailed information about the Firebase data structure

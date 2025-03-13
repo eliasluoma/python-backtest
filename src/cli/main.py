@@ -7,13 +7,13 @@ It provides a unified interface to all functionality, including:
 - Running trading simulations
 - Analyzing market data
 - Exporting and visualizing results
+- Managing the SQLite data cache
 """
 
 import os
 import sys
 import argparse
 import logging
-from typing import Optional, List, Dict, Any
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -24,6 +24,7 @@ from src.cli.commands.simulate import add_simulate_subparser, handle_simulate_co
 from src.cli.commands.analyze import add_analyze_subparser, handle_analyze_command
 from src.cli.commands.export import add_export_subparser, handle_export_command
 from src.cli.commands.visualize import add_visualize_subparser, handle_visualize_command
+from src.cli.commands.cache import add_cache_subparser, handle_cache_command
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -58,6 +59,7 @@ def create_parser() -> argparse.ArgumentParser:
     add_analyze_subparser(subparsers)
     add_export_subparser(subparsers)
     add_visualize_subparser(subparsers)
+    add_cache_subparser(subparsers)
 
     return parser
 
@@ -123,6 +125,8 @@ def main() -> int:
             return handle_export_command(args)
         elif args.command == "visualize":
             return handle_visualize_command(args)
+        elif args.command == "cache":
+            return handle_cache_command(args)
         else:
             logger.error(f"Unknown command: {args.command}")
             return 1
