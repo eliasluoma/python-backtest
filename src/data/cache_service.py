@@ -1260,3 +1260,53 @@ class DataCacheService:
         finally:
             if "conn" in locals():
                 conn.close()
+
+    def get_pools_with_datapoints(self, min_data_points: int = 0) -> List[Dict[str, Any]]:
+        """
+        Get all pools with their data point counts from the cache.
+        
+        Args:
+            min_data_points: Minimum number of data points required
+            
+        Returns:
+            List of dictionaries with pool information and data point counts
+        """
+        try:
+            conn = sqlite3.connect(str(self.db_path))
+            
+            query = """
+            SELECT 
+                poolAddress, 
+                creationTime, 
+                lastUpdated, 
+                dataPoints, 
+                minTimestamp, 
+                maxTimestamp, 
+                metadata
+            FROM pools
+            """
+            
+            params = []
+            
+            if min_data_points > 0:
+                query += " WHERE dataPoints >= ?"
+                params.append(min_data_points)
+            
+            query += " ORDER BY dataPoints DESC"
+            
+            cursor = conn.execute(query, params)
+            columns = [col[0] for col in cursor.description]
+            
+            result = []
+            for row in cursor.fetchall():
+                pool_info = {columns[i]: row[i] for i in range(len(columns))}
+                result.append(pool_info)
+            
+            return result
+        
+        except Exception as e:
+            logger.error(f"Error getting pools with datapoints: {e}")
+            return []
+        finally:
+            if "conn" in locals():
+                conn.close()
