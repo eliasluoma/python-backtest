@@ -37,8 +37,8 @@ def add_cache_subparser(subparsers):
     update_parser.add_argument("--recent", "-r", action="store_true", help="Update only recently active pools")
     update_parser.add_argument("--min-points", "-m", type=int, default=0, help="Minimum data points required in cache")
 
-    # Import command
-    import_parser = cache_subparsers.add_parser("import", help="Import pools from Firebase to cache")
+    # Import command (legacy)
+    import_parser = cache_subparsers.add_parser("import", help="Import pools from Firebase to cache (legacy)")
     import_parser.add_argument(
         "--pools", "-p", nargs="+", help="Specific pools to import (if omitted, imports pools up to the limit)"
     )
@@ -56,6 +56,35 @@ def add_cache_subparser(subparsers):
         "--new-only", "-n", action="store_true", help="Import only pools that don't exist in the local cache"
     )
     import_parser.add_argument("--schema", "-s", type=str, help="Path to schema file (defaults to schema.sql)")
+    
+    # NEW: Import New Pools command
+    import_new_parser = cache_subparsers.add_parser("import-new-pools", 
+                                                    help="Import only new pools from Firebase to cache")
+    import_new_parser.add_argument(
+        "--limit", "-l", type=int, default=None, help="Maximum number of new pools to import (default: all new pools)"
+    )
+    import_new_parser.add_argument(
+        "--min-points",
+        "-m",
+        type=int,
+        default=600,
+        help="Minimum data points required for a pool to be imported (default: 600 = 10 minutes)",
+    )
+    
+    # NEW: Check Data Integrity command
+    check_integrity_parser = cache_subparsers.add_parser("check-data-integrity", 
+                                                        help="Check and update incomplete pools in local database")
+    check_integrity_parser.add_argument(
+        "--limit", "-l", type=int, default=None, 
+        help="Maximum number of incomplete pools to update (default: all incomplete pools)"
+    )
+    check_integrity_parser.add_argument(
+        "--min-points",
+        "-m",
+        type=int,
+        default=600,
+        help="Minimum data points required for a pool (default: 600 = 10 minutes)",
+    )
 
     # Clear command
     clear_parser = cache_subparsers.add_parser("clear", help="Clear cache")
@@ -749,6 +778,28 @@ def handle_cache_command(args: argparse.Namespace):
             min_data_points=args.min_points,
             new_only=args.new_only,
         )
+        
+    elif args.cache_command == "import-new-pools":
+        # Initialize Firebase service
+        firebase_service = FirebaseService()
+        
+        return import_new_pools(
+            cache_service,
+            firebase_service,
+            limit=args.limit,
+            min_data_points=args.min_points,
+        )
+        
+    elif args.cache_command == "check-data-integrity":
+        # Initialize Firebase service
+        firebase_service = FirebaseService()
+        
+        return check_data_integrity(
+            cache_service,
+            firebase_service,
+            limit=args.limit,
+            min_data_points=args.min_points,
+        )
 
     else:
         logger.error(f"Unknown cache command: {args.cache_command}")
@@ -805,3 +856,328 @@ def estimate_datapoints_for_pool(firebase_service, pool_id, min_points=600):
     except Exception as e:
         logger.error(f"Virhe poolille {pool_id}: {e}")
         return 0, 0, None, None
+
+# NEW: Function to import only new pools
+def import_new_pools(
+    cache_service: DataCacheService,
+    firebase_service: FirebaseService,
+    limit: Optional[int] = None,
+    min_data_points: int = 600,
+) -> bool:
+    """
+    Import only new pools from Firebase that don't exist in the local cache.
+    Uses fast evaluation method to check if pools have sufficient data points.
+
+    Args:
+        cache_service: The data cache service instance
+        firebase_service: The Firebase service instance
+        limit: Maximum number of new pools to import
+        min_data_points: Minimum number of data points required for a pool to be imported
+
+    Returns:
+        bool: Whether the import was successful
+    """
+    logger.info(f"Starting import of new pools with limit={limit if limit else 'all'}, min_data_points={min_data_points}")
+    start_time = time.time()
+    
+    # 1. Get all existing pool IDs from local database
+    print("Fetching existing pools from local database...")
+    local_pools = cache_service.get_pool_ids(limit=100000)  # Get all existing pools
+    logger.info(f"Found {len(local_pools)} pools in local database")
+    print(f"Found {len(local_pools)} pools in local database")
+    
+    # 2. Get all available pool IDs from Firebase
+    print("Fetching available pools from Firebase...")
+    # Use larger limit to account for filtering
+    fetch_limit = None if limit is None else limit * 3
+    firebase_pools = firebase_service.get_available_pools(limit=fetch_limit)
+    
+    if not firebase_pools:
+        logger.error("No pools found in Firebase")
+        print("No pools found in Firebase")
+        return False
+    
+    logger.info(f"Found {len(firebase_pools)} pools in Firebase")
+    print(f"Found {len(firebase_pools)} pools in Firebase")
+    
+    # 3. Find new pools (in Firebase but not in local database)
+    new_pools = [pool_id for pool_id in firebase_pools if pool_id.lower() not in 
+                 [p.lower() for p in local_pools]]
+    
+    logger.info(f"Identified {len(new_pools)} completely new pools")
+    print(f"Identified {len(new_pools)} completely new pools")
+    
+    if not new_pools:
+        logger.info("No new pools to import")
+        print("No new pools to import. Local database is up to date.")
+        return True
+    
+    # 4. Fast evaluation of new pools
+    print("\n--- FAST POOL EVALUATION ---")
+    print(f"Evaluating {len(new_pools)} new pools for data point count...")
+    
+    start_check_time = time.time()
+    acceptable_pools = []
+    rejected_pools = []
+    estimation_accuracy = []
+    total_estimated = 0
+    total_actual = 0
+    
+    for i, pool_id in enumerate(new_pools):
+        # Display progress
+        if i % 1 == 0:
+            progress = (i + 1) / len(new_pools) * 100
+            progress_bar = int(progress / 2)  # 50 characters for full bar
+            print(f"\r[{'=' * progress_bar}{' ' * (50 - progress_bar)}] {progress:.1f}% ({i+1}/{len(new_pools)})", end="")
+            sys.stdout.flush()
+        
+        # Estimate data points using the fast method
+        estimated_count, actual_count, first_id, last_id = estimate_datapoints_for_pool(
+            firebase_service, pool_id, min_data_points
+        )
+        
+        # Calculate accuracy (if both counts are > 0)
+        if estimated_count > 0 and actual_count > 0:
+            accuracy = estimated_count / actual_count
+            estimation_accuracy.append(accuracy)
+        
+        # Decide whether to accept or reject the pool
+        if actual_count >= min_data_points:
+            acceptable_pools.append(pool_id)
+            total_actual += actual_count
+            total_estimated += estimated_count
+        else:
+            rejected_pools.append(pool_id)
+    
+    # New line after progress bar
+    print()
+    
+    end_check_time = time.time()
+    check_time = end_check_time - start_check_time
+    
+    # Calculate and display statistics
+    avg_accuracy = sum(estimation_accuracy) / len(estimation_accuracy) if estimation_accuracy else 0
+    print(f"\nFast pool evaluation completed:")
+    print(f"  Evaluated: {len(new_pools)} pools")
+    print(f"  Accepted: {len(acceptable_pools)} pools")
+    print(f"  Rejected: {len(rejected_pools)} pools")
+    print(f"  Average estimation accuracy: {avg_accuracy:.2f}")
+    print(f"  Evaluation time: {check_time:.2f} seconds")
+    print(f"  Average time per pool: {check_time / max(1, len(new_pools)):.4f} seconds")
+    
+    if not acceptable_pools:
+        print("\nNo pools with sufficient data points found. Nothing to import.")
+        logger.info("No pools with sufficient data points found. Nothing to import.")
+        return True
+    
+    # 5. Apply limit if specified
+    if limit is not None and len(acceptable_pools) > limit:
+        print(f"\nLimiting import to {limit} pools (originally found: {len(acceptable_pools)})")
+        acceptable_pools = acceptable_pools[:limit]
+        logger.info(f"Limiting import to {limit} pools")
+    
+    # 6. Import the acceptable pools
+    print(f"\n--- IMPORTING NEW POOLS ---")
+    print(f"Importing {len(acceptable_pools)} new pools with sufficient data points...")
+    print("This may take several minutes depending on the number of pools...")
+    import_start_time = time.time()
+    
+    result = update_specific_pools(cache_service, firebase_service, acceptable_pools, min_data_points)
+    
+    import_time = time.time() - import_start_time
+    print(f"\nImport completed! Duration: {import_time:.2f} seconds")
+    
+    # 7. Mark successfully imported pools as verified
+    print("\n--- MARKING VERIFIED POOLS ---")
+    
+    # Get new pools after import
+    new_pools_after_import = cache_service.get_pools_with_datapoints(min_data_points=min_data_points)
+    new_pool_ids = {pool_info["poolAddress"].lower() for pool_info in new_pools_after_import}
+    
+    # Find successfully imported pools
+    successfully_imported = [
+        pool_id for pool_id in acceptable_pools
+        if pool_id.lower() in new_pool_ids
+    ]
+    
+    if successfully_imported:
+        mark_start_time = time.time()
+        # Mark pools as verified
+        note = f"Verified automatically {datetime.now().strftime('%Y-%m-%d %H:%M')} during import"
+        marked_count = cache_service.mark_pools_verified(successfully_imported, note)
+        mark_time = time.time() - mark_start_time
+        
+        print(f"Marked {marked_count} pools as verified (duration: {mark_time:.2f} seconds)")
+        print(f"These pools will be skipped in future checks automatically.")
+    else:
+        print("No new verified pools to mark.")
+    
+    total_time = time.time() - start_time
+    print(f"\n===== IMPORT NEW POOLS COMPLETED =====")
+    print(f"Total time: {total_time:.2f} seconds")
+    
+    return result
+
+# NEW: Function to check data integrity and update incomplete pools
+def check_data_integrity(
+    cache_service: DataCacheService,
+    firebase_service: FirebaseService,
+    limit: Optional[int] = None,
+    min_data_points: int = 600,
+) -> bool:
+    """
+    Check local database for pools with incomplete data compared to Firebase.
+    Update any pools that have fewer data points locally than in Firebase.
+
+    Args:
+        cache_service: The data cache service instance
+        firebase_service: The Firebase service instance
+        limit: Maximum number of incomplete pools to update
+        min_data_points: Minimum number of data points required
+
+    Returns:
+        bool: Whether the integrity check and update was successful
+    """
+    logger.info(f"Starting data integrity check with limit={limit if limit else 'all'}, min_data_points={min_data_points}")
+    start_time = time.time()
+    
+    # 1. Get all verified pool IDs from local database
+    print("Fetching verified pools from local database...")
+    verified_pools = cache_service.get_verified_pools()
+    verified_pool_ids = {pool_info["poolAddress"].lower() for pool_info in verified_pools}
+    logger.info(f"Found {len(verified_pool_ids)} verified pools in local database")
+    print(f"Found {len(verified_pool_ids)} verified pools in local database")
+    
+    # 2. Get all pool information from local database
+    print("Fetching all pools with data points from local database...")
+    local_pools = cache_service.get_pools_with_datapoints()
+    local_pool_datapoints = {
+        pool_info["poolAddress"].lower(): pool_info["dataPoints"] 
+        for pool_info in local_pools
+    }
+    logger.info(f"Found {len(local_pool_datapoints)} pools with data points in local database")
+    print(f"Found {len(local_pool_datapoints)} pools with data points in local database")
+    print(f"Total data points in local database: {sum(local_pool_datapoints.values())}")
+    
+    # 3. Get unverified pools
+    unverified_pool_ids = [
+        pool_id for pool_id in local_pool_datapoints.keys()
+        if pool_id not in verified_pool_ids
+    ]
+    
+    logger.info(f"Found {len(unverified_pool_ids)} unverified pools in local database")
+    print(f"Found {len(unverified_pool_ids)} unverified pools in local database")
+    
+    if not unverified_pool_ids:
+        print("\nAll pools in local database are verified. No integrity check needed.")
+        logger.info("All pools in local database are verified. No integrity check needed.")
+        return True
+    
+    # 4. Fast evaluation of unverified pools to check for missing data
+    print("\n--- CHECKING DATA INTEGRITY ---")
+    print(f"Evaluating {len(unverified_pool_ids)} unverified pools for missing data...")
+    
+    start_check_time = time.time()
+    incomplete_pools = []
+    
+    for i, pool_id in enumerate(unverified_pool_ids):
+        # Display progress
+        if i % 1 == 0:
+            progress = (i + 1) / len(unverified_pool_ids) * 100
+            progress_bar = int(progress / 2)  # 50 characters for full bar
+            print(f"\r[{'=' * progress_bar}{' ' * (50 - progress_bar)}] {progress:.1f}% ({i+1}/{len(unverified_pool_ids)})", end="")
+            sys.stdout.flush()
+        
+        pool_id_lower = pool_id.lower()
+        local_data_count = local_pool_datapoints.get(pool_id_lower, 0)
+        
+        # Estimate data points using the fast method
+        estimated_count, actual_count, first_id, last_id = estimate_datapoints_for_pool(
+            firebase_service, pool_id, min_data_points
+        )
+        
+        # If Firebase has significantly more data than local database, add to incomplete pools
+        if actual_count > local_data_count + 10 and actual_count >= min_data_points:
+            incomplete_pools.append((pool_id, local_data_count, actual_count))
+    
+    # New line after progress bar
+    print()
+    
+    end_check_time = time.time()
+    check_time = end_check_time - start_check_time
+    
+    # Sort incomplete pools by the difference between actual and local count (largest difference first)
+    incomplete_pools.sort(key=lambda x: x[2] - x[1], reverse=True)
+    
+    print(f"\nData integrity check completed in {check_time:.2f} seconds")
+    print(f"Found {len(incomplete_pools)} incomplete pools with missing data")
+    
+    if not incomplete_pools:
+        print("\nNo incomplete pools found. Local database is consistent with Firebase.")
+        logger.info("No incomplete pools found. Local database is consistent with Firebase.")
+        return True
+    
+    # Display some of the incomplete pools
+    print("\nTop incomplete pools:")
+    for i, (pool_id, local_count, firebase_count) in enumerate(incomplete_pools[:min(5, len(incomplete_pools))]):
+        diff = firebase_count - local_count
+        print(f"  {i+1}. {pool_id}: Local: {local_count}, Firebase: {firebase_count}, Missing: {diff} data points")
+    
+    if len(incomplete_pools) > 5:
+        print(f"  ... and {len(incomplete_pools) - 5} more")
+    
+    # 5. Apply limit if specified
+    if limit is not None and len(incomplete_pools) > limit:
+        print(f"\nLimiting update to {limit} incomplete pools (originally found: {len(incomplete_pools)})")
+        incomplete_pools = incomplete_pools[:limit]
+        logger.info(f"Limiting update to {limit} incomplete pools")
+    
+    # 6. Update the incomplete pools
+    print(f"\n--- UPDATING INCOMPLETE POOLS ---")
+    print(f"Updating {len(incomplete_pools)} incomplete pools...")
+    print("This may take several minutes depending on the number of pools...")
+    update_start_time = time.time()
+    
+    # Extract only the pool IDs for update
+    pool_ids_to_update = [pool_id for pool_id, _, _ in incomplete_pools]
+    
+    # Update specific pools (will replace existing data)
+    result = update_specific_pools(cache_service, firebase_service, pool_ids_to_update, min_data_points)
+    
+    update_time = time.time() - update_start_time
+    print(f"\nUpdate completed! Duration: {update_time:.2f} seconds")
+    
+    # 7. Mark successfully updated pools as verified
+    print("\n--- MARKING VERIFIED POOLS ---")
+    
+    # Get updated pools
+    updated_pools = cache_service.get_pools_with_datapoints(min_data_points=min_data_points)
+    updated_pool_ids = {pool_info["poolAddress"].lower(): pool_info["dataPoints"] for pool_info in updated_pools}
+    
+    # Find successfully updated pools
+    successfully_updated = []
+    for pool_id, local_count, firebase_count in incomplete_pools:
+        pool_id_lower = pool_id.lower()
+        if pool_id_lower in updated_pool_ids:
+            new_count = updated_pool_ids[pool_id_lower]
+            # Only mark as verified if we got at least 90% of the expected data points
+            if new_count >= firebase_count * 0.9:
+                successfully_updated.append(pool_id)
+    
+    if successfully_updated:
+        mark_start_time = time.time()
+        # Mark pools as verified
+        note = f"Verified automatically {datetime.now().strftime('%Y-%m-%d %H:%M')} during integrity check"
+        marked_count = cache_service.mark_pools_verified(successfully_updated, note)
+        mark_time = time.time() - mark_start_time
+        
+        print(f"Marked {marked_count} pools as verified (duration: {mark_time:.2f} seconds)")
+        print(f"These pools will be skipped in future integrity checks.")
+    else:
+        print("No pools marked as verified after update.")
+    
+    total_time = time.time() - start_time
+    print(f"\n===== DATA INTEGRITY CHECK COMPLETED =====")
+    print(f"Total time: {total_time:.2f} seconds")
+    
+    return result
