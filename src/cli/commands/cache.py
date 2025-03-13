@@ -34,6 +34,23 @@ def add_cache_subparser(subparsers):
     update_parser.add_argument("--recent", "-r", action="store_true", help="Update only recently active pools")
     update_parser.add_argument("--min-points", "-m", type=int, default=0, help="Minimum data points required in cache")
 
+    # Import command
+    import_parser = cache_subparsers.add_parser("import", help="Import pools from Firebase to cache")
+    import_parser.add_argument(
+        "--pools", "-p", nargs="+", help="Specific pools to import (if omitted, imports pools up to the limit)"
+    )
+    import_parser.add_argument(
+        "--limit", "-l", type=int, default=100, help="Maximum number of pools to import (default: 100)"
+    )
+    import_parser.add_argument(
+        "--min-points",
+        "-m",
+        type=int,
+        default=600,
+        help="Minimum data points required for a pool to be imported (default: 600 = 10 minutes)",
+    )
+    import_parser.add_argument("--schema", "-s", type=str, help="Path to schema file (defaults to updated_schema.sql)")
+
     # Clear command
     clear_parser = cache_subparsers.add_parser("clear", help="Clear cache")
     clear_parser.add_argument("--days", "-d", type=int, help="Clear data older than specified days")
@@ -218,6 +235,90 @@ def backup_cache(cache_service: DataCacheService, output_path: Optional[str] = N
     return success
 
 
+def import_pools(
+    cache_service: DataCacheService,
+    firebase_service: FirebaseService,
+    pool_ids: List[str] = None,
+    limit: int = 100,
+    min_data_points: int = 600,
+) -> bool:
+    """
+    Import pools from Firebase to SQLite cache with specific criteria.
+
+    Args:
+        cache_service: The data cache service instance
+        firebase_service: The Firebase service instance
+        pool_ids: Specific pool IDs to import (if None, imports pools up to the limit)
+        limit: Maximum number of pools to import
+        min_data_points: Minimum number of data points required for a pool to be imported
+
+    Returns:
+        bool: Whether the import was successful
+    """
+    logger.info(f"Starting import with limit={limit}, min_data_points={min_data_points}")
+
+    # If specific pools are provided, use those
+    if pool_ids:
+        logger.info(f"Importing {len(pool_ids)} specific pools")
+        return update_specific_pools(cache_service, firebase_service, pool_ids, min_data_points)
+
+    # Otherwise, get all available pools up to 2x the limit (to account for filtering)
+    all_pools = firebase_service.get_available_pools(limit=limit * 2)
+    if not all_pools:
+        logger.error("No pools found in Firebase")
+        return False
+
+    logger.info(f"Found {len(all_pools)} pools in Firebase, importing up to {limit} pools")
+
+    success_count = 0
+    error_count = 0
+    insufficient_data_count = 0
+    processed_count = 0
+
+    for pool_id in all_pools:
+        if processed_count >= limit:
+            logger.info(f"Reached import limit of {limit} pools")
+            break
+
+        try:
+            # Fetch data from Firebase
+            df = firebase_service.fetch_pool_data(pool_id)
+
+            if df.empty:
+                logger.warning(f"No data found for pool {pool_id}")
+                continue
+
+            # Check if pool has sufficient data points
+            if len(df) < min_data_points:
+                logger.info(f"Pool {pool_id} has insufficient data points ({len(df)} < {min_data_points})")
+                insufficient_data_count += 1
+                continue
+
+            # Update cache
+            success = cache_service.update_pool_data(pool_id, df)
+            processed_count += 1
+
+            if success:
+                logger.info(f"Successfully imported pool {pool_id} with {len(df)} data points")
+                success_count += 1
+            else:
+                logger.error(f"Failed to import pool {pool_id}")
+                error_count += 1
+
+        except Exception as e:
+            logger.error(f"Error importing pool {pool_id}: {e}")
+            error_count += 1
+
+    # Log summary
+    logger.info("Import completed:")
+    logger.info(f"  Pools processed: {processed_count}")
+    logger.info(f"  Successfully imported: {success_count}")
+    logger.info(f"  Failed imports: {error_count}")
+    logger.info(f"  Insufficient data points: {insufficient_data_count}")
+
+    return success_count > 0
+
+
 def handle_cache_command(args: argparse.Namespace):
     """Handle cache commands based on arguments."""
     # Get cache directory
@@ -256,6 +357,22 @@ def handle_cache_command(args: argparse.Namespace):
 
     elif args.cache_command == "backup":
         return backup_cache(cache_service, args.output)
+
+    elif args.cache_command == "import":
+        # Initialize Firebase service
+        firebase_service = FirebaseService()
+
+        # Determine schema path
+        schema_path = (
+            args.schema if args.schema else Path(__file__).parent.parent.parent / "data" / "updated_schema.sql"
+        )
+
+        # Create cache service with specified schema
+        cache_service = DataCacheService(db_path=str(db_path), schema_path=str(schema_path))
+
+        return import_pools(
+            cache_service, firebase_service, pool_ids=args.pools, limit=args.limit, min_data_points=args.min_points
+        )
 
     else:
         logger.error(f"Unknown cache command: {args.cache_command}")
