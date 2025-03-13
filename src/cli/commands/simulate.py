@@ -11,9 +11,9 @@ from typing import Any, Dict, Optional
 logger = logging.getLogger(__name__)
 
 # Import the required modules
-from firebase_service import FirebaseService
-from part1_buy_simulation import BuySimulator, preprocess_pool_data
-from part2_sell_simulation import SellSimulator
+from src.data.firebase_service import FirebaseService
+from legacy.part1_buy_simulation import BuySimulator, preprocess_pool_data
+from legacy.part2_sell_simulation import SellSimulator
 
 
 def add_simulate_subparser(subparsers: argparse._SubParsersAction) -> None:

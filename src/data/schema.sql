@@ -1,6 +1,7 @@
 -- SQLite Schema for Pool Data Caching
 -- This schema defines the structure for caching pool data
--- across Python and TypeScript applications
+-- All field names match the REQUIRED_FIELDS list from pool_analyzer.py
+-- and use camelCase naming convention for full consistency
 
 -- Enable foreign keys
 PRAGMA foreign_keys = ON;
@@ -14,87 +15,111 @@ CREATE TABLE IF NOT EXISTS schema_version (
 
 -- Pools metadata
 CREATE TABLE IF NOT EXISTS pools (
-    pool_id TEXT PRIMARY KEY,
-    creation_time TIMESTAMP NOT NULL,
-    last_updated TIMESTAMP NOT NULL,
-    data_points INTEGER NOT NULL,
-    min_timestamp TIMESTAMP NOT NULL,
-    max_timestamp TIMESTAMP NOT NULL,
+    poolAddress TEXT PRIMARY KEY,
+    creationTime TIMESTAMP NOT NULL,
+    lastUpdated TIMESTAMP NOT NULL,
+    dataPoints INTEGER NOT NULL,
+    minTimestamp TIMESTAMP NOT NULL,
+    maxTimestamp TIMESTAMP NOT NULL,
     metadata TEXT -- JSON string with additional metadata
 );
 
 -- Market data
 CREATE TABLE IF NOT EXISTS market_data (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    pool_id TEXT NOT NULL,
+    poolAddress TEXT NOT NULL,
     timestamp TIMESTAMP NOT NULL,
     
-    -- Core market metrics
-    market_cap REAL,
-    current_price REAL,
-    last_price REAL,
+    -- Market Cap Fields - 10 fields
+    marketCap REAL,
+    athMarketCap REAL,
+    minMarketCap REAL,
+    marketCapChange5s REAL,
+    marketCapChange10s REAL,
+    marketCapChange30s REAL,
+    marketCapChange60s REAL,
+    maMarketCap10s REAL,
+    maMarketCap30s REAL,
+    maMarketCap60s REAL,
     
-    -- Market cap metrics
-    ath_market_cap REAL,
-    min_market_cap REAL,
-    ma_market_cap_10s REAL,
-    ma_market_cap_30s REAL,
-    ma_market_cap_60s REAL,
+    -- Price Fields - 3 fields
+    currentPrice REAL,
+    priceChangePercent REAL,
+    priceChangeFromStart REAL,
     
-    -- Market cap changes
-    market_cap_change_5s REAL,
-    market_cap_change_10s REAL,
-    market_cap_change_30s REAL,
-    market_cap_change_60s REAL,
+    -- Holder Fields - 8 fields
+    holdersCount INTEGER,
+    initialHoldersCount INTEGER,
+    holdersGrowthFromStart REAL,
+    holderDelta5s INTEGER,
+    holderDelta10s INTEGER,
+    holderDelta30s INTEGER,
+    holderDelta60s INTEGER,
     
-    -- Price metrics
-    price_change_percent REAL,
-    price_change_from_start REAL,
+    -- Volume Fields - 4 fields
+    buyVolume5s REAL,
+    buyVolume10s REAL,
+    netVolume5s REAL,
+    netVolume10s REAL,
     
-    -- Holder metrics
-    holders_count INTEGER,
-    initial_holders_count INTEGER,
-    holders_growth_from_start REAL,
-    holder_delta_5s INTEGER,
-    holder_delta_10s INTEGER,
-    holder_delta_30s INTEGER,
-    holder_delta_60s INTEGER,
+    -- Buy Classification Fields - 6 fields
+    largeBuy5s INTEGER,
+    largeBuy10s INTEGER,
+    bigBuy5s INTEGER,
+    bigBuy10s INTEGER,
+    superBuy5s INTEGER,
+    superBuy10s INTEGER,
     
-    -- Volume metrics
-    buy_volume_5s REAL,
-    buy_volume_10s REAL,
-    net_volume_5s REAL,
-    net_volume_10s REAL,
-    total_volume REAL,
+    -- Trade Data - 5s - 14 fields
+    trade_last5Seconds_volume_buy REAL,
+    trade_last5Seconds_volume_sell REAL,
+    trade_last5Seconds_volume_bot REAL,
+    trade_last5Seconds_tradeCount_buy_small INTEGER,
+    trade_last5Seconds_tradeCount_buy_medium INTEGER,
+    trade_last5Seconds_tradeCount_buy_large INTEGER,
+    trade_last5Seconds_tradeCount_buy_big INTEGER,
+    trade_last5Seconds_tradeCount_buy_super INTEGER,
+    trade_last5Seconds_tradeCount_sell_small INTEGER,
+    trade_last5Seconds_tradeCount_sell_medium INTEGER,
+    trade_last5Seconds_tradeCount_sell_large INTEGER,
+    trade_last5Seconds_tradeCount_sell_big INTEGER,
+    trade_last5Seconds_tradeCount_sell_super INTEGER,
+    trade_last5Seconds_tradeCount_bot INTEGER,
     
-    -- Buy classification metrics
-    large_buy_5s INTEGER,
-    large_buy_10s INTEGER,
-    big_buy_5s INTEGER,
-    big_buy_10s INTEGER,
-    super_buy_5s INTEGER,
-    super_buy_10s INTEGER,
+    -- Trade Data - 10s - 14 fields
+    trade_last10Seconds_volume_buy REAL,
+    trade_last10Seconds_volume_sell REAL,
+    trade_last10Seconds_volume_bot REAL,
+    trade_last10Seconds_tradeCount_buy_small INTEGER,
+    trade_last10Seconds_tradeCount_buy_medium INTEGER,
+    trade_last10Seconds_tradeCount_buy_large INTEGER,
+    trade_last10Seconds_tradeCount_buy_big INTEGER,
+    trade_last10Seconds_tradeCount_buy_super INTEGER,
+    trade_last10Seconds_tradeCount_sell_small INTEGER,
+    trade_last10Seconds_tradeCount_sell_medium INTEGER,
+    trade_last10Seconds_tradeCount_sell_large INTEGER,
+    trade_last10Seconds_tradeCount_sell_big INTEGER,
+    trade_last10Seconds_tradeCount_sell_super INTEGER,
+    trade_last10Seconds_tradeCount_bot INTEGER,
     
-    -- Metadata
-    time_from_start INTEGER,
+    -- Metadata - 2 fields
+    timeFromStart INTEGER,
+    totalVolume REAL, -- Extra field not in main REQUIRED_FIELDS list but needed
     
-    -- Trade data (stored as JSON to handle nested structure)
-    trade_data TEXT,  -- JSON containing all trade_last5Seconds and trade_last10Seconds data
-    
-    -- Additional fields as JSON for flexible schema
-    additional_data TEXT,  -- JSON containing any other fields
+    -- Additional fields as JSON for future flexibility
+    additional_data TEXT,  -- JSON containing any other fields that may be added in the future
     
     -- Constraints
-    FOREIGN KEY (pool_id) REFERENCES pools(pool_id) ON DELETE CASCADE,
-    UNIQUE(pool_id, timestamp)
+    FOREIGN KEY (poolAddress) REFERENCES pools(poolAddress) ON DELETE CASCADE,
+    UNIQUE(poolAddress, timestamp)
 );
 
 -- Indexes for efficient queries
-CREATE INDEX IF NOT EXISTS idx_market_data_pool_id ON market_data(pool_id);
+CREATE INDEX IF NOT EXISTS idx_market_data_pool_id ON market_data(poolAddress);
 CREATE INDEX IF NOT EXISTS idx_market_data_timestamp ON market_data(timestamp);
-CREATE INDEX IF NOT EXISTS idx_market_data_pool_timestamp ON market_data(pool_id, timestamp);
-CREATE INDEX IF NOT EXISTS idx_market_data_market_cap ON market_data(market_cap);
-CREATE INDEX IF NOT EXISTS idx_market_data_holders_count ON market_data(holders_count);
+CREATE INDEX IF NOT EXISTS idx_market_data_pool_timestamp ON market_data(poolAddress, timestamp);
+CREATE INDEX IF NOT EXISTS idx_market_data_market_cap ON market_data(marketCap);
+CREATE INDEX IF NOT EXISTS idx_market_data_holders_count ON market_data(holdersCount);
 
 -- Cache management table
 CREATE TABLE IF NOT EXISTS cache_stats (
@@ -107,7 +132,7 @@ CREATE TABLE IF NOT EXISTS cache_stats (
 
 -- Initial schema version
 INSERT OR IGNORE INTO schema_version (id, version, updated_at) 
-VALUES (1, 1, datetime('now'));
+VALUES (1, 2, datetime('now'));
 
 -- Initial cache stats
 INSERT OR IGNORE INTO cache_stats (id, last_global_update, total_pools, total_data_points, cache_size_bytes)

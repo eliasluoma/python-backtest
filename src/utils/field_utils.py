@@ -289,26 +289,32 @@ def get_df_field(df, field_name: str, default: Any = None):
     raise KeyError(f"Field '{field_name}' not found in any naming convention")
 
 
-def normalize_dataframe_columns(df):
+def normalize_dataframe_columns(df, target_convention: str = "snake"):
     """
     Normalize all column names in a DataFrame to a consistent naming convention.
 
     Args:
         df: Pandas DataFrame to normalize
+        target_convention: Target naming convention ('snake' or 'camel')
 
     Returns:
-        DataFrame with normalized column names (snake_case)
+        DataFrame with normalized column names in the specified convention
     """
+    # Validate target_convention
+    if target_convention not in ["snake", "camel"]:
+        logger.warning(f"Invalid target_convention '{target_convention}', defaulting to 'snake'")
+        target_convention = "snake"
+
     # Create a mapping for this specific DataFrame
     rename_map = {}
     for col in df.columns:
-        norm_name = normalize_field_name(col, target_convention="snake")
+        norm_name = normalize_field_name(col, target_convention=target_convention)
         if norm_name != col:
             rename_map[col] = norm_name
 
     # Apply the renaming
     if rename_map:
-        logger.debug(f"Normalizing DataFrame columns: {rename_map}")
+        logger.debug(f"Normalizing DataFrame columns to {target_convention} case: {rename_map}")
         df = df.rename(columns=rename_map)
 
     return df

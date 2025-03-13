@@ -2,7 +2,7 @@
 SQLite-based Cache Service for Pool Data
 
 This module provides a caching mechanism for pool data using SQLite as the backend.
-It is designed to work with both Python and TypeScript applications.
+All field names match the REQUIRED_FIELDS list from pool_analyzer.py for full consistency.
 """
 
 import sqlite3
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class DataCacheService:
-    """SQLite-based cache service for pool data"""
+    """SQLite-based cache service for pool data with consistent field naming"""
 
     def __init__(
         self, db_path: Union[str, Path], schema_path: Optional[Union[str, Path]] = None, memory_cache_size: int = 100
@@ -89,9 +89,9 @@ class DataCacheService:
 
             if not version:
                 # Initialize schema version
-                conn.execute("INSERT INTO schema_version (id, version, updated_at) VALUES (1, 1, datetime('now'))")
+                conn.execute("INSERT INTO schema_version (id, version, updated_at) VALUES (1, 2, datetime('now'))")
 
-            logger.info(f"Connected to database (schema version: {version[0] if version else 1})")
+            logger.info(f"Connected to database (schema version: {version[0] if version else 2})")
 
         except Exception as e:
             logger.error(f"Error initializing database: {e}")
@@ -154,20 +154,11 @@ class DataCacheService:
         self, pool_id: str, min_timestamp: Optional[datetime] = None, max_timestamp: Optional[datetime] = None
     ) -> pd.DataFrame:
         """Get pool data from SQLite database"""
-        # Prepare query
+        # Prepare query - Select all columns from the market_data table
         query = """
-        SELECT 
-            pool_id, timestamp, market_cap, current_price, last_price, 
-            ath_market_cap, min_market_cap, ma_market_cap_10s, ma_market_cap_30s, ma_market_cap_60s,
-            market_cap_change_5s, market_cap_change_10s, market_cap_change_30s, market_cap_change_60s,
-            price_change_percent, price_change_from_start,
-            holders_count, initial_holders_count, holders_growth_from_start,
-            holder_delta_5s, holder_delta_10s, holder_delta_30s, holder_delta_60s,
-            buy_volume_5s, buy_volume_10s, net_volume_5s, net_volume_10s, total_volume,
-            large_buy_5s, large_buy_10s, big_buy_5s, big_buy_10s, super_buy_5s, super_buy_10s,
-            time_from_start, trade_data, additional_data
+        SELECT *
         FROM market_data
-        WHERE pool_id = ?
+        WHERE poolAddress = ?
         """
 
         # Add timestamp filters if provided
@@ -193,47 +184,20 @@ class DataCacheService:
 
             df = pd.read_sql_query(query, conn, params=params)
 
-            # Process JSON columns
-            if not df.empty:
-                # Parse JSON columns
-                if "trade_data" in df.columns:
-                    trade_dfs = []
-                    for i, row in df.iterrows():
-                        if row["trade_data"] and row["trade_data"] != "{}":
-                            try:
-                                trade_data = json.loads(row["trade_data"])
-                                # Flatten trade data columns
-                                flat_trade = self._flatten_json(trade_data, parent_key="trade_")
-                                trade_dfs.append(pd.Series(flat_trade, name=i))
-                            except json.JSONDecodeError:
-                                logger.warning(f"Invalid JSON in trade_data for pool {pool_id}")
-                                trade_dfs.append(pd.Series({}, name=i))
-                        else:
-                            trade_dfs.append(pd.Series({}, name=i))
-
-                    if trade_dfs:
-                        trade_df = pd.DataFrame(trade_dfs)
-                        if not trade_df.empty:
-                            df = pd.concat([df.drop("trade_data", axis=1), trade_df], axis=1)
-
+            # Process JSON columns if present
+            if not df.empty and "additional_data" in df.columns:
                 # Parse additional_data
-                if "additional_data" in df.columns:
-                    add_dfs = []
-                    for i, row in df.iterrows():
-                        if row["additional_data"] and row["additional_data"] != "{}":
-                            try:
-                                add_data = json.loads(row["additional_data"])
-                                add_dfs.append(pd.Series(add_data, name=i))
-                            except json.JSONDecodeError:
-                                logger.warning(f"Invalid JSON in additional_data for pool {pool_id}")
-                                add_dfs.append(pd.Series({}, name=i))
-                        else:
-                            add_dfs.append(pd.Series({}, name=i))
+                for i, row in df.iterrows():
+                    if row["additional_data"] and row["additional_data"] != "{}":
+                        try:
+                            add_data = json.loads(row["additional_data"])
+                            for key, value in add_data.items():
+                                df.at[i, key] = value
+                        except json.JSONDecodeError:
+                            logger.warning(f"Invalid JSON in additional_data for pool {pool_id}")
 
-                    if add_dfs:
-                        add_df = pd.DataFrame(add_dfs)
-                        if not add_df.empty:
-                            df = pd.concat([df.drop("additional_data", axis=1), add_df], axis=1)
+                # Drop the JSON column after extraction
+                df = df.drop("additional_data", axis=1)
 
                 # Convert timestamp to datetime
                 if "timestamp" in df.columns:
@@ -247,18 +211,6 @@ class DataCacheService:
         finally:
             if "conn" in locals():
                 conn.close()
-
-    def _flatten_json(self, json_obj: Dict, parent_key: str = "") -> Dict:
-        """Flatten nested JSON objects for easier DataFrame conversion"""
-        items = {}
-        for k, v in json_obj.items():
-            new_key = f"{parent_key}{k}" if parent_key else k
-
-            if isinstance(v, dict):
-                items.update(self._flatten_json(v, f"{new_key}."))
-            else:
-                items[new_key] = v
-        return items
 
     def update_pool_data(self, pool_id: str, df: pd.DataFrame, replace: bool = False) -> bool:
         """
@@ -276,7 +228,7 @@ class DataCacheService:
             logger.warning(f"Empty DataFrame provided for pool {pool_id}, skipping update")
             return False
 
-        # Standardize column names to snake_case
+        # Standardize column names to camelCase
         df = self._standardize_column_names(df)
 
         # Ensure timestamp column exists and is in datetime format
@@ -287,9 +239,9 @@ class DataCacheService:
         if not pd.api.types.is_datetime64_any_dtype(df["timestamp"]):
             df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
 
-        # Ensure pool_id column exists
-        if "pool_id" not in df.columns:
-            df["pool_id"] = pool_id
+        # Ensure poolAddress column exists
+        if "poolAddress" not in df.columns:
+            df["poolAddress"] = pool_id
 
         # Sort by timestamp
         df = df.sort_values("timestamp")
@@ -309,7 +261,7 @@ class DataCacheService:
 
             try:
                 # Check if pool exists
-                cursor = conn.execute("SELECT pool_id FROM pools WHERE pool_id = ?", (pool_id,))
+                cursor = conn.execute("SELECT poolAddress FROM pools WHERE poolAddress = ?", (pool_id,))
                 pool_exists = cursor.fetchone() is not None
 
                 # Handle pool metadata
@@ -319,11 +271,11 @@ class DataCacheService:
                         conn.execute(
                             """
                         UPDATE pools SET 
-                            last_updated = datetime('now'),
-                            data_points = ?,
-                            min_timestamp = ?,
-                            max_timestamp = ?
-                        WHERE pool_id = ?
+                            lastUpdated = datetime('now'),
+                            dataPoints = ?,
+                            minTimestamp = ?,
+                            maxTimestamp = ?
+                        WHERE poolAddress = ?
                         """,
                             (data_points, min_timestamp.isoformat(), max_timestamp.isoformat(), pool_id),
                         )
@@ -332,11 +284,11 @@ class DataCacheService:
                         conn.execute(
                             """
                         UPDATE pools SET 
-                            last_updated = datetime('now'),
-                            data_points = data_points + ?,
-                            min_timestamp = MIN(min_timestamp, ?),
-                            max_timestamp = MAX(max_timestamp, ?)
-                        WHERE pool_id = ?
+                            lastUpdated = datetime('now'),
+                            dataPoints = dataPoints + ?,
+                            minTimestamp = MIN(minTimestamp, ?),
+                            maxTimestamp = MAX(maxTimestamp, ?)
+                        WHERE poolAddress = ?
                         """,
                             (data_points, min_timestamp.isoformat(), max_timestamp.isoformat(), pool_id),
                         )
@@ -345,8 +297,8 @@ class DataCacheService:
                     conn.execute(
                         """
                     INSERT INTO pools (
-                        pool_id, creation_time, last_updated, 
-                        data_points, min_timestamp, max_timestamp, metadata
+                        poolAddress, creationTime, lastUpdated, 
+                        dataPoints, minTimestamp, maxTimestamp, metadata
                     ) VALUES (?, datetime('now'), datetime('now'), ?, ?, ?, ?)
                     """,
                         (pool_id, data_points, min_timestamp.isoformat(), max_timestamp.isoformat(), "{}"),
@@ -355,133 +307,38 @@ class DataCacheService:
                 # Handle market data
                 if replace:
                     # Delete existing data
-                    conn.execute("DELETE FROM market_data WHERE pool_id = ?", (pool_id,))
+                    conn.execute("DELETE FROM market_data WHERE poolAddress = ?", (pool_id,))
+
+                # Get column names from table schema
+                cursor = conn.execute("PRAGMA table_info(market_data)")
+                db_columns = [row[1] for row in cursor.fetchall()]
 
                 # Prepare data for insertion
-                records = []
                 for _, row in df.iterrows():
-                    # Extract special columns for JSON storage
-                    trade_data: Dict[str, Any] = {}
-                    additional_data: Dict[str, Any] = {}
+                    # Create a dictionary of field values that are in the schema
+                    db_fields = {}
+                    extra_fields = {}
 
+                    # Separate fields that are in the schema from those that are not
                     for col in row.index:
-                        # Check if column is trade-related or other
-                        if col.startswith("trade_"):
-                            # Add to trade_data
-                            parts = col.split(".")
-                            curr = trade_data
-                            for i, part in enumerate(parts[:-1]):
-                                if part not in curr:
-                                    curr[part] = {}
-                                curr = curr[part]
-                            curr[parts[-1]] = row[col]
-                        elif col not in [
-                            "pool_id",
-                            "timestamp",
-                            "market_cap",
-                            "current_price",
-                            "last_price",
-                            "ath_market_cap",
-                            "min_market_cap",
-                            "ma_market_cap_10s",
-                            "ma_market_cap_30s",
-                            "ma_market_cap_60s",
-                            "market_cap_change_5s",
-                            "market_cap_change_10s",
-                            "market_cap_change_30s",
-                            "market_cap_change_60s",
-                            "price_change_percent",
-                            "price_change_from_start",
-                            "holders_count",
-                            "initial_holders_count",
-                            "holders_growth_from_start",
-                            "holder_delta_5s",
-                            "holder_delta_10s",
-                            "holder_delta_30s",
-                            "holder_delta_60s",
-                            "buy_volume_5s",
-                            "buy_volume_10s",
-                            "net_volume_5s",
-                            "net_volume_10s",
-                            "total_volume",
-                            "large_buy_5s",
-                            "large_buy_10s",
-                            "big_buy_5s",
-                            "big_buy_10s",
-                            "super_buy_5s",
-                            "super_buy_10s",
-                            "time_from_start",
-                        ]:
-                            # Add to additional_data
-                            additional_data[col] = row[col]
+                        if col in db_columns:
+                            db_fields[col] = row[col]
+                        else:
+                            # Skip NaN values
+                            if pd.notna(row[col]):
+                                extra_fields[col] = row[col]
 
-                    # Convert to JSON strings
-                    trade_json = json.dumps(trade_data) if trade_data else "{}"
-                    additional_json = json.dumps(additional_data) if additional_data else "{}"
+                    # Convert extra fields to JSON
+                    additional_data = json.dumps(extra_fields) if extra_fields else "{}"
+                    db_fields["additional_data"] = additional_data
 
-                    # Create record for insertion
-                    record = (
-                        row.get("pool_id"),
-                        row.get("timestamp").isoformat(),
-                        row.get("market_cap"),
-                        row.get("current_price"),
-                        row.get("last_price"),
-                        row.get("ath_market_cap"),
-                        row.get("min_market_cap"),
-                        row.get("ma_market_cap_10s"),
-                        row.get("ma_market_cap_30s"),
-                        row.get("ma_market_cap_60s"),
-                        row.get("market_cap_change_5s"),
-                        row.get("market_cap_change_10s"),
-                        row.get("market_cap_change_30s"),
-                        row.get("market_cap_change_60s"),
-                        row.get("price_change_percent"),
-                        row.get("price_change_from_start"),
-                        row.get("holders_count"),
-                        row.get("initial_holders_count"),
-                        row.get("holders_growth_from_start"),
-                        row.get("holder_delta_5s"),
-                        row.get("holder_delta_10s"),
-                        row.get("holder_delta_30s"),
-                        row.get("holder_delta_60s"),
-                        row.get("buy_volume_5s"),
-                        row.get("buy_volume_10s"),
-                        row.get("net_volume_5s"),
-                        row.get("net_volume_10s"),
-                        row.get("total_volume"),
-                        row.get("large_buy_5s"),
-                        row.get("large_buy_10s"),
-                        row.get("big_buy_5s"),
-                        row.get("big_buy_10s"),
-                        row.get("super_buy_5s"),
-                        row.get("super_buy_10s"),
-                        row.get("time_from_start"),
-                        trade_json,
-                        additional_json,
-                    )
-                    records.append(record)
+                    # Create placeholders and values for SQL query
+                    placeholders = ", ".join(["?"] * len(db_fields))
+                    columns = ", ".join(db_fields.keys())
+                    values = list(db_fields.values())
 
-                # Insert data in batches
-                batch_size = 100
-                for i in range(0, len(records), batch_size):
-                    batch = records[i : i + batch_size]
-                    conn.executemany(
-                        """
-                    INSERT OR REPLACE INTO market_data (
-                        pool_id, timestamp, market_cap, current_price, last_price,
-                        ath_market_cap, min_market_cap, ma_market_cap_10s, ma_market_cap_30s, ma_market_cap_60s,
-                        market_cap_change_5s, market_cap_change_10s, market_cap_change_30s, market_cap_change_60s,
-                        price_change_percent, price_change_from_start,
-                        holders_count, initial_holders_count, holders_growth_from_start,
-                        holder_delta_5s, holder_delta_10s, holder_delta_30s, holder_delta_60s,
-                        buy_volume_5s, buy_volume_10s, net_volume_5s, net_volume_10s, total_volume,
-                        large_buy_5s, large_buy_10s, big_buy_5s, big_buy_10s, super_buy_5s, super_buy_10s,
-                        time_from_start, trade_data, additional_data
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
-                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                        batch,
-                    )
+                    # Insert into database
+                    conn.execute(f"INSERT OR REPLACE INTO market_data ({columns}) VALUES ({placeholders})", values)
 
                 # Update cache statistics
                 conn.execute(
@@ -541,7 +398,7 @@ class DataCacheService:
 
     def _standardize_column_names(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Standardize column names to snake_case.
+        Standardize column names to camelCase to match REQUIRED_FIELDS.
 
         Args:
             df: DataFrame with original column names
@@ -550,7 +407,7 @@ class DataCacheService:
             DataFrame with standardized column names
         """
         # Use the normalize_dataframe_columns utility to handle mixed naming conventions
-        return normalize_dataframe_columns(df)
+        return normalize_dataframe_columns(df, target_convention="camel")
 
     def get_pool_ids(self, limit: int = 100, min_data_points: int = 0) -> List[str]:
         """
@@ -566,14 +423,14 @@ class DataCacheService:
         try:
             conn = sqlite3.connect(str(self.db_path))
 
-            query = "SELECT pool_id FROM pools"
+            query = "SELECT poolAddress FROM pools"
             params = []
 
             if min_data_points > 0:
-                query += " WHERE data_points >= ?"
+                query += " WHERE dataPoints >= ?"
                 params.append(min_data_points)
 
-            query += " ORDER BY data_points DESC LIMIT ?"
+            query += " ORDER BY dataPoints DESC LIMIT ?"
             params.append(limit)
 
             cursor = conn.execute(query, params)
@@ -612,7 +469,7 @@ class DataCacheService:
 
             # Start with basic query
             query = """
-            SELECT p.pool_id
+            SELECT p.poolAddress
             FROM pools p
             """
 
@@ -621,37 +478,37 @@ class DataCacheService:
 
             # Add data points filter
             if min_data_points > 0:
-                where_clauses.append("p.data_points >= ?")
+                where_clauses.append("p.dataPoints >= ?")
                 params.append(min_data_points)
 
             # Add market cap filter if needed
             if min_market_cap is not None:
                 query += """
                 JOIN (
-                    SELECT pool_id, MAX(timestamp) as latest_ts
+                    SELECT poolAddress, MAX(timestamp) as latest_ts
                     FROM market_data
-                    GROUP BY pool_id
-                ) latest ON p.pool_id = latest.pool_id
-                JOIN market_data md ON latest.pool_id = md.pool_id AND latest.latest_ts = md.timestamp
+                    GROUP BY poolAddress
+                ) latest ON p.poolAddress = latest.poolAddress
+                JOIN market_data md ON latest.poolAddress = md.poolAddress AND latest.latest_ts = md.timestamp
                 """
-                where_clauses.append("md.market_cap >= ?")
+                where_clauses.append("md.marketCap >= ?")
                 params.append(float(min_market_cap))
 
                 # Add holders filter if needed
                 if min_holders is not None:
-                    where_clauses.append("md.holders_count >= ?")
+                    where_clauses.append("md.holdersCount >= ?")
                     params.append(min_holders)
             elif min_holders is not None:
                 # Only holders filter, no market cap filter
                 query += """
                 JOIN (
-                    SELECT pool_id, MAX(timestamp) as latest_ts
+                    SELECT poolAddress, MAX(timestamp) as latest_ts
                     FROM market_data
-                    GROUP BY pool_id
-                ) latest ON p.pool_id = latest.pool_id
-                JOIN market_data md ON latest.pool_id = md.pool_id AND latest.latest_ts = md.timestamp
+                    GROUP BY poolAddress
+                ) latest ON p.poolAddress = latest.poolAddress
+                JOIN market_data md ON latest.poolAddress = md.poolAddress AND latest.latest_ts = md.timestamp
                 """
-                where_clauses.append("md.holders_count >= ?")
+                where_clauses.append("md.holdersCount >= ?")
                 params.append(min_holders)
 
             # Add WHERE clause if any filters
@@ -659,7 +516,7 @@ class DataCacheService:
                 query += " WHERE " + " AND ".join(where_clauses)
 
             # Add limit
-            query += " ORDER BY p.data_points DESC LIMIT ?"
+            query += " ORDER BY p.dataPoints DESC LIMIT ?"
             params.append(limit)
 
             # Execute query
@@ -713,9 +570,9 @@ class DataCacheService:
             # Get top 5 largest pools
             cursor = conn.execute(
                 """
-            SELECT pool_id, data_points
+            SELECT poolAddress, dataPoints
             FROM pools
-            ORDER BY data_points DESC
+            ORDER BY dataPoints DESC
             LIMIT 5
             """
             )
@@ -765,26 +622,26 @@ class DataCacheService:
                     conn.execute(
                         """
                     UPDATE pools SET
-                        data_points = (
+                        dataPoints = (
                             SELECT COUNT(*) 
                             FROM market_data 
-                            WHERE market_data.pool_id = pools.pool_id
+                            WHERE market_data.poolAddress = pools.poolAddress
                         ),
-                        min_timestamp = (
+                        minTimestamp = (
                             SELECT MIN(timestamp) 
                             FROM market_data 
-                            WHERE market_data.pool_id = pools.pool_id
+                            WHERE market_data.poolAddress = pools.poolAddress
                         ),
-                        max_timestamp = (
+                        maxTimestamp = (
                             SELECT MAX(timestamp) 
                             FROM market_data 
-                            WHERE market_data.pool_id = pools.pool_id
+                            WHERE market_data.poolAddress = pools.poolAddress
                         )
                     """
                     )
 
                     # Remove pools with no data
-                    conn.execute("DELETE FROM pools WHERE data_points = 0")
+                    conn.execute("DELETE FROM pools WHERE dataPoints = 0")
 
                 else:
                     # Clear all data
