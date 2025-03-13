@@ -16,7 +16,7 @@ from datetime import datetime
 import pandas as pd
 
 # Add project root to path
-root_dir = Path(__file__).parent
+root_dir = Path(__file__).parent.parent
 sys.path.append(str(root_dir))
 
 # Import services and utilities
@@ -33,8 +33,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("import_pools")
 
 # Constants
-NUM_POOLS_TO_IMPORT = 10
-MIN_DATA_POINTS = 100
+NUM_POOLS_TO_IMPORT = 100
+MIN_DATA_POINTS = 600
 SCHEMA_FILE = root_dir / "src" / "data" / "updated_schema.sql"
 DB_PATH = root_dir / "cache" / "pools.db"
 
@@ -43,15 +43,31 @@ class CustomJSONEncoder(json.JSONEncoder):
     """Custom JSON encoder for complex objects."""
 
     def default(self, obj):
+        # Handle Firebase Timestamp objects
         if hasattr(obj, "seconds") and hasattr(obj, "nanoseconds"):
             # Firebase Timestamp
             return datetime.fromtimestamp(obj.seconds + obj.nanoseconds / 1e9).isoformat()
+
+        # Handle datetime objects
         elif hasattr(obj, "isoformat"):
             # Datetime object
             return obj.isoformat()
+
+        # Handle pandas Timestamp objects
         elif pd.api.types.is_datetime64_any_dtype(type(obj)):
             # Pandas Timestamp object
             return obj.isoformat()
+
+        # Handle numpy datatypes (which may not be JSON serializable)
+        elif str(type(obj)).startswith("<class 'numpy."):
+            return obj.item()
+
+        # Handle other non-serializable types
+        elif hasattr(obj, "__dict__"):
+            # Convert object to dictionary
+            return {key: value for key, value in obj.__dict__.items() if not key.startswith("_")}
+
+        # Let the base class handle it (or raise TypeError)
         return super().default(obj)
 
 
@@ -94,6 +110,40 @@ def preprocess_dataframe(df):
     if "timestamp" in df.columns:
         df["timestamp"] = pd.to_datetime(df["timestamp"])
         df["timestamp"] = df["timestamp"].apply(lambda x: x.isoformat() if hasattr(x, "isoformat") else str(x))
+        logger.info(
+            f"Converted timestamp column to ISO format strings, sample: {df['timestamp'].iloc[0] if not df.empty else None}"
+        )
+
+    # Ensure timeFromStart is an INTEGER as expected in the schema
+    if "timeFromStart" in df.columns:
+        # Try to convert to integer, log the original type for debugging
+        logger.info(
+            f"timeFromStart original type: {df['timeFromStart'].dtype}, sample: {df['timeFromStart'].iloc[0] if not df.empty else None}"
+        )
+        try:
+            # Handle potential timestamp objects
+            if df["timeFromStart"].dtype == "object":
+                # Check if these are timestamp objects
+                sample = df["timeFromStart"].iloc[0] if not df.empty else None
+                if hasattr(sample, "seconds") and hasattr(sample, "nanoseconds"):
+                    logger.info("Converting timeFromStart from Firebase Timestamp objects to integer seconds")
+                    df["timeFromStart"] = df["timeFromStart"].apply(
+                        lambda x: (
+                            int(x.seconds + x.nanoseconds / 1e9)
+                            if hasattr(x, "seconds") and hasattr(x, "nanoseconds")
+                            else x
+                        )
+                    )
+
+            # First convert to float to handle potential string values, then to int
+            df["timeFromStart"] = df["timeFromStart"].astype(float).astype(int)
+            logger.info(
+                f"Successfully converted timeFromStart to INTEGER: {df['timeFromStart'].dtype}, sample: {df['timeFromStart'].iloc[0] if not df.empty else None}"
+            )
+        except Exception as e:
+            # If conversion fails, use string representation and log warning
+            logger.warning(f"Error converting timeFromStart to INTEGER: {e}, using string representation instead")
+            df["timeFromStart"] = df["timeFromStart"].astype(str)
 
     # Convert numeric fields properly
     for col in df.columns:
@@ -101,26 +151,65 @@ def preprocess_dataframe(df):
         if col == "timestamp":
             continue
 
+        # Get sample value for debugging
+        sample_val = df[col].iloc[0] if not df.empty else None
+
+        # Debug log for each field
+        logger.debug(f"Processing field '{col}' with type {df[col].dtype}, sample: {sample_val}")
+
         # Handle complex fields first (they might be misidentified as numeric)
         if col in [field.lower() for field in [f.replace("FIELD_", "") for f in COMPLEX_FIELDS]]:
-            logger.debug(f"Converting complex field {col} to JSON string")
+            logger.info(f"Converting complex field {col} to JSON string")
             df[col] = df[col].apply(lambda x: json.dumps(x, cls=CustomJSONEncoder) if x is not None else None)
+            logger.debug(
+                f"Field '{col}' converted to string with CustomJSONEncoder, sample: {df[col].iloc[0] if not df.empty else None}"
+            )
+
         # Handle numeric fields
         elif col in [field.lower() for field in [f.replace("FIELD_", "") for f in NUMERIC_FIELDS]]:
             logger.debug(f"Converting numeric field {col} to float")
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-            df[col] = df[col].apply(lambda x: float(x) if pd.notnull(x) else None)
+            try:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+                df[col] = df[col].apply(lambda x: float(x) if pd.notnull(x) else None)
+                logger.debug(f"Successfully converted {col} to float")
+            except Exception as e:
+                logger.warning(f"Error converting {col} to float: {e}, will use string representation")
+                df[col] = df[col].astype(str)
+
         # Handle integer fields
         elif col in [field.lower() for field in [f.replace("FIELD_", "") for f in INTEGER_FIELDS]]:
             logger.debug(f"Converting integer field {col} to int")
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-            df[col] = df[col].apply(lambda x: int(x) if pd.notnull(x) else None)
+            try:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+                df[col] = df[col].apply(lambda x: int(x) if pd.notnull(x) and not pd.isna(x) else None)
+                logger.debug(f"Successfully converted {col} to integer")
+            except Exception as e:
+                logger.warning(f"Error converting {col} to integer: {e}, will use string representation")
+                df[col] = df[col].astype(str)
+
         # Handle string fields
         else:
             logger.debug(f"Converting field {col} to string if needed")
             if df[col].dtype == "object":
                 df[col] = df[col].apply(lambda x: str(x) if pd.notnull(x) and x is not None else None)
 
+    # Additional check: ensure all Firebase Timestamp objects are properly serialized
+    for col in df.columns:
+        # Check for any remaining Firebase Timestamp objects
+        sample_vals = df[col].iloc[:5].tolist() if not df.empty else []
+        for val in sample_vals:
+            if hasattr(val, "seconds") and hasattr(val, "nanoseconds"):
+                logger.warning(f"Found Firebase Timestamp in column {col} after processing! Converting to string.")
+                df[col] = df[col].apply(
+                    lambda x: (
+                        datetime.fromtimestamp(x.seconds + x.nanoseconds / 1e9).isoformat()
+                        if hasattr(x, "seconds") and hasattr(x, "nanoseconds")
+                        else x
+                    )
+                )
+                break
+
+    logger.info(f"DataFrame preprocessing complete, final shape: {df.shape}")
     return df
 
 
@@ -224,12 +313,22 @@ def insert_pool_data(conn, pool_id, df):
             columns = ", ".join(db_fields.keys())
             values = list(db_fields.values())
 
+            # Debug logging for parameter binding issues
+            if idx == 0:  # Only log the first row to avoid excessive logs
+                logger.info(f"First row SQL columns: {columns}")
+                logger.info(f"First row placeholders: {placeholders}")
+                for i, (col, val) in enumerate(zip(db_fields.keys(), values)):
+                    logger.info(f"Parameter {i+1}: {col} = {val} (type: {type(val).__name__})")
+
             # Insert into database
             try:
                 conn.execute(f"INSERT OR REPLACE INTO market_data ({columns}) VALUES ({placeholders})", values)
                 success_count += 1
             except Exception as e:
                 logger.error(f"Error inserting row {idx} for pool {pool_id}: {e}")
+                # Log detailed parameter information for the failed row
+                for i, (col, val) in enumerate(zip(db_fields.keys(), values)):
+                    logger.error(f"Failed row - Parameter {i+1}: {col} = {val} (type: {type(val).__name__})")
                 error_count += 1
 
         # Commit transaction

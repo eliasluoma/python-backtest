@@ -5,13 +5,13 @@ This file defines the field names used in the Firebase database and SQLite cache
 These constants help maintain consistency across the codebase.
 """
 
-# Timestamp Fields 
+# Timestamp Fields
 # These fields store time-related data (datetime objects, timestamps)
-FIELD_TIMEFROMSTART = "timeFromStart"
 FIELD_TIMESTAMP = "timestamp"
 
 # Numeric Fields
 # These fields store decimal values (prices, volumes, rates)
+FIELD_TIMEFROMSTART = "timeFromStart"
 FIELD_ATHMARKETCAP = "athMarketCap"
 FIELD_BUYVOLUME10S = "buyVolume10s"
 FIELD_BUYVOLUME5S = "buyVolume5s"
@@ -50,7 +50,11 @@ FIELD_SUPERBUY5S = "superBuy5s"
 FIELD_CURRENTPRICE = "currentPrice"
 FIELD_POOLADDRESS = "poolAddress"
 
-# Complex Fields 
+# Special Fields
+# These fields store special data or are used for specific purposes
+FIELD_ADDITIONAL_DATA = "additional_data"  # For storing extra fields as JSON in SQLite
+
+# Complex Fields
 # These fields store nested data structures (dicts, lists)
 FIELD_TRADELAST10SECONDS = "tradeLast10Seconds"  # Requires serialization for SQLite
 FIELD_TRADELAST5SECONDS = "tradeLast5Seconds"  # Requires serialization for SQLite
@@ -106,8 +110,13 @@ COMPLEX_FIELDS = [
     FIELD_TRADELAST5SECONDS,
 ]
 
+# Special fields for SQLite storage
+SPECIAL_FIELDS = [
+    FIELD_ADDITIONAL_DATA,
+]
+
 # All fields combined
-ALL_FIELDS = TIMESTAMP_FIELDS + NUMERIC_FIELDS + INTEGER_FIELDS + STRING_FIELDS + COMPLEX_FIELDS
+ALL_FIELDS = TIMESTAMP_FIELDS + NUMERIC_FIELDS + INTEGER_FIELDS + STRING_FIELDS + COMPLEX_FIELDS + SPECIAL_FIELDS
 
 # Required fields for basic functionality
 REQUIRED_FIELDS = [

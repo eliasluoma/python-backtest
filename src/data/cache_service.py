@@ -9,19 +9,53 @@ import sqlite3
 import json
 import shutil
 import logging
+import signal
+import sys
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Union, Optional, Any, Tuple
 
 import pandas as pd
+import numpy as np
 from functools import lru_cache
 
-# Import field utilities
-from src.utils.field_utils import normalize_dataframe_columns
+# Import field utilities and constants
+from src.utils.field_utils import (
+    normalize_dataframe_columns,
+    snake_to_camel,
+    camel_to_snake,
+)
+from constants.fields import FIELD_ADDITIONAL_DATA
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+
+class CustomJSONEncoder(json.JSONEncoder):
+    """Custom JSON encoder that can handle Timestamp objects and other special types."""
+
+    def default(self, obj):
+        # Handle datetime objects
+        if hasattr(obj, "isoformat"):
+            return obj.isoformat()
+
+        # Handle Timestamp objects (from Firebase)
+        if hasattr(obj, "seconds") and hasattr(obj, "nanoseconds"):
+            return datetime.fromtimestamp(obj.seconds + obj.nanoseconds / 1e9).isoformat()
+
+        # Handle NumPy types
+        if isinstance(obj, (np.integer, np.int64)):
+            return int(obj)
+        elif isinstance(obj, (np.floating, np.float64)):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, np.bool_):
+            return bool(obj)
+
+        # Let the base class handle it or raise TypeError
+        return super().default(obj)
 
 
 class DataCacheService:
@@ -54,6 +88,10 @@ class DataCacheService:
 
         # Init/update memory cache decorator
         self.get_from_memory = lru_cache(maxsize=memory_cache_size)(self._get_from_memory)
+
+        # Setup signal handler for graceful shutdown
+        signal.signal(signal.SIGINT, self._handle_shutdown)
+        signal.signal(signal.SIGTERM, self._handle_shutdown)
 
         logger.info(f"Cache service initialized with database at {self.db_path}")
 
@@ -185,19 +223,19 @@ class DataCacheService:
             df = pd.read_sql_query(query, conn, params=params)
 
             # Process JSON columns if present
-            if not df.empty and "additional_data" in df.columns:
+            if not df.empty and FIELD_ADDITIONAL_DATA in df.columns:
                 # Parse additional_data
                 for i, row in df.iterrows():
-                    if row["additional_data"] and row["additional_data"] != "{}":
+                    if row[FIELD_ADDITIONAL_DATA] and row[FIELD_ADDITIONAL_DATA] != "{}":
                         try:
-                            add_data = json.loads(row["additional_data"])
+                            add_data = json.loads(row[FIELD_ADDITIONAL_DATA])
                             for key, value in add_data.items():
                                 df.at[i, key] = value
                         except json.JSONDecodeError:
-                            logger.warning(f"Invalid JSON in additional_data for pool {pool_id}")
+                            logger.warning(f"Invalid JSON in {FIELD_ADDITIONAL_DATA} for pool {pool_id}")
 
                 # Drop the JSON column after extraction
-                df = df.drop("additional_data", axis=1)
+                df = df.drop(FIELD_ADDITIONAL_DATA, axis=1)
 
                 # Convert timestamp to datetime
                 if "timestamp" in df.columns:
@@ -239,17 +277,117 @@ class DataCacheService:
         if not pd.api.types.is_datetime64_any_dtype(df["timestamp"]):
             df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
 
-        # Ensure poolAddress column exists
+        # Ensure DataFrame has poolAddress column with correct value
         if "poolAddress" not in df.columns:
             df["poolAddress"] = pool_id
+            logger.info(f"Added poolAddress column for pool {pool_id}")
+
+        # Ensure timestamp column is in ISO format
+        if "timestamp" in df.columns:
+            df["timestamp"] = pd.to_datetime(df["timestamp"])
+            df["timestamp"] = df["timestamp"].apply(lambda x: x.isoformat() if hasattr(x, "isoformat") else str(x))
+            logger.debug(
+                f"Converted timestamp column to ISO format, example: {df['timestamp'].iloc[0] if not df.empty else None}"
+            )
+
+        # Format other datetime fields as ISO strings
+        datetime_columns = ["creationTime", "lastUpdated", "minTimestamp", "maxTimestamp"]
+        for col in datetime_columns:
+            if col in df.columns:
+                df[col] = pd.to_datetime(df[col], errors="coerce")
+                df[col] = df[col].apply(lambda x: x.isoformat() if hasattr(x, "isoformat") and pd.notnull(x) else None)
+                logger.debug(f"Formatted {col} as ISO datetime strings")
+
+        # Make sure timeFromStart is an integer
+        if "timeFromStart" in df.columns:
+            # Get original type for debugging
+            orig_type = df["timeFromStart"].dtype
+            logger.info(
+                f"timeFromStart original type: {orig_type}, sample value: {df['timeFromStart'].iloc[0] if not df.empty else None}"
+            )
+
+            try:
+                # First check for Firebase Timestamp objects
+                if df["timeFromStart"].dtype == "object":
+                    sample = df["timeFromStart"].iloc[0] if not df.empty else None
+                    if hasattr(sample, "seconds") and hasattr(sample, "nanoseconds"):
+                        logger.info("Converting timeFromStart from Firebase Timestamp objects to integer seconds")
+                        df["timeFromStart"] = df["timeFromStart"].apply(
+                            lambda x: (
+                                int(x.seconds + x.nanoseconds / 1e9)
+                                if hasattr(x, "seconds") and hasattr(x, "nanoseconds")
+                                else x
+                            )
+                        )
+
+                # Handle string values that might be timestamps
+                df["timeFromStart"] = df["timeFromStart"].apply(
+                    lambda x: pd.to_datetime(x).timestamp() if isinstance(x, str) and ":" in x else x
+                )
+
+                # Finally convert to integer
+                df["timeFromStart"] = df["timeFromStart"].astype(float).astype(int)
+                logger.info(
+                    f"Successfully converted timeFromStart to INTEGER: {df['timeFromStart'].dtype}, sample: {df['timeFromStart'].iloc[0] if not df.empty else None}"
+                )
+            except Exception as e:
+                logger.warning(f"Error converting timeFromStart to integer: {e}")
+                # Handle conversion error: try a different approach
+                try:
+                    # Try to handle each value individually
+                    def safe_convert_to_int(val):
+                        if pd.isna(val) or val is None:
+                            return 0
+                        elif hasattr(val, "seconds") and hasattr(val, "nanoseconds"):
+                            return int(val.seconds + val.nanoseconds / 1e9)
+                        elif isinstance(val, str):
+                            # Try to parse as timestamp if it looks like a date/time
+                            if ":" in val:
+                                try:
+                                    return int(pd.to_datetime(val).timestamp())
+                                except:
+                                    return 0
+                            # Otherwise try to convert string to int directly
+                            try:
+                                return int(float(val))
+                            except:
+                                return 0
+                        else:
+                            try:
+                                return int(float(val))
+                            except:
+                                return 0
+
+                    df["timeFromStart"] = df["timeFromStart"].apply(safe_convert_to_int)
+                    logger.info(
+                        f"Recovered timeFromStart conversion to INTEGER using safe conversion: {df['timeFromStart'].dtype}"
+                    )
+                except Exception as inner_e:
+                    logger.error(f"Failed all attempts to convert timeFromStart to INTEGER: {inner_e}")
+                    # Last resort: use 0 as a default value
+                    df["timeFromStart"] = 0
+                    logger.warning("Using 0 as default value for timeFromStart")
 
         # Sort by timestamp
         df = df.sort_values("timestamp")
 
-        # Extract metadata
-        min_timestamp = df["timestamp"].min()
-        max_timestamp = df["timestamp"].max()
+        # Extract metadata - get these before converting timestamp to ISO format
+        min_timestamp_val = df["timestamp"].min()
+        max_timestamp_val = df["timestamp"].max()
         data_points = len(df)
+
+        # Ensure min_timestamp and max_timestamp are properly formatted
+        if hasattr(min_timestamp_val, "isoformat"):
+            min_timestamp = min_timestamp_val.isoformat()
+        else:
+            min_timestamp = str(min_timestamp_val)
+
+        if hasattr(max_timestamp_val, "isoformat"):
+            max_timestamp = max_timestamp_val.isoformat()
+        else:
+            max_timestamp = str(max_timestamp_val)
+
+        logger.debug(f"Min timestamp: {min_timestamp}, Max timestamp: {max_timestamp}")
 
         try:
             # Connect to database
@@ -277,20 +415,19 @@ class DataCacheService:
                             maxTimestamp = ?
                         WHERE poolAddress = ?
                         """,
-                            (data_points, min_timestamp.isoformat(), max_timestamp.isoformat(), pool_id),
+                            (data_points, min_timestamp, max_timestamp, pool_id),
                         )
                     else:
-                        # Update with append
+                        # When appending, first remove any existing records with the same timestamps
+                        # to avoid duplicates while preserving the unique constraint
+                        timestamps = df["timestamp"].tolist()
+                        timestamp_placeholders = ", ".join(["?" for _ in timestamps])
                         conn.execute(
-                            """
-                        UPDATE pools SET 
-                            lastUpdated = datetime('now'),
-                            dataPoints = dataPoints + ?,
-                            minTimestamp = MIN(minTimestamp, ?),
-                            maxTimestamp = MAX(maxTimestamp, ?)
-                        WHERE poolAddress = ?
-                        """,
-                            (data_points, min_timestamp.isoformat(), max_timestamp.isoformat(), pool_id),
+                            f"DELETE FROM market_data WHERE poolAddress = ? AND timestamp IN ({timestamp_placeholders})",
+                            [pool_id] + timestamps,
+                        )
+                        logger.debug(
+                            f"Removed {len(timestamps)} existing records with matching timestamps for pool {pool_id}"
                         )
                 else:
                     # Insert new pool
@@ -301,44 +438,160 @@ class DataCacheService:
                         dataPoints, minTimestamp, maxTimestamp, metadata
                     ) VALUES (?, datetime('now'), datetime('now'), ?, ?, ?, ?)
                     """,
-                        (pool_id, data_points, min_timestamp.isoformat(), max_timestamp.isoformat(), "{}"),
+                        (pool_id, data_points, min_timestamp, max_timestamp, "{}"),
                     )
 
                 # Handle market data
                 if replace:
                     # Delete existing data
                     conn.execute("DELETE FROM market_data WHERE poolAddress = ?", (pool_id,))
+                else:
+                    # When appending, first remove any existing records with the same timestamps
+                    # to avoid duplicates while preserving the unique constraint
+                    timestamps = df["timestamp"].tolist()
+                    timestamp_placeholders = ", ".join(["?" for _ in timestamps])
+                    conn.execute(
+                        f"DELETE FROM market_data WHERE poolAddress = ? AND timestamp IN ({timestamp_placeholders})",
+                        [pool_id] + timestamps,
+                    )
+                    logger.debug(
+                        f"Removed {len(timestamps)} existing records with matching timestamps for pool {pool_id}"
+                    )
 
                 # Get column names from table schema
                 cursor = conn.execute("PRAGMA table_info(market_data)")
                 db_columns = [row[1] for row in cursor.fetchall()]
 
-                # Prepare data for insertion
-                for _, row in df.iterrows():
-                    # Create a dictionary of field values that are in the schema
+                # Create a mapping of column names to their database counterparts, making sure
+                # to handle case sensitivity issues (marketCapChange5s vs marketCapChange5S)
+                column_map = {}
+
+                for db_col in db_columns:
+                    # Add direct mapping
+                    column_map[db_col.lower()] = db_col
+
+                    # Also map with common case inconsistencies
+                    if db_col.lower().endswith("s"):
+                        alt_col = db_col.lower().replace("s", "S")
+                        column_map[alt_col] = db_col
+
+                    # Add snake_case to camelCase mapping and vice versa
+                    if "_" in db_col:  # It's snake_case in DB
+                        camel_col = snake_to_camel(db_col)
+                        column_map[camel_col.lower()] = db_col
+                    else:  # It's camelCase in DB
+                        snake_col = camel_to_snake(db_col)
+                        column_map[snake_col.lower()] = db_col
+
+                # Handle special trade fields separately
+                trade_fields = [col for col in db_columns if col.startswith("trade_last")]
+                for field in trade_fields:
+                    # Map from camelCase format (tradeLast5Seconds.volume.buy) to DB format
+                    parts = field.split("_")
+                    if len(parts) >= 3:
+                        # Create camelCase version: tradeLast5Seconds
+                        camel_prefix = f"tradeLast{parts[1][4:]}Seconds"
+                        # For fields like trade_last5Seconds_volume_buy
+                        if len(parts) == 4:
+                            camel_field = f"{camel_prefix}.{parts[2]}.{parts[3]}"
+                        # For fields like trade_last5Seconds_tradeCount_buy_small
+                        elif len(parts) == 5:
+                            camel_field = f"{camel_prefix}.{parts[2]}.{parts[3]}.{parts[4]}"
+                        else:
+                            camel_field = field
+                        column_map[camel_field.lower()] = field
+
+                logger.debug(f"Column mapping created with {len(column_map)} entries")
+                logger.debug(f"Sample mappings: {list(column_map.items())[:5]}")
+
+                # Map DataFrame fields to DB columns based on our mapping
+                # First, extract trade data from nested structures
+                normalized_df = self.extract_trade_data_from_df(df)
+
+                # Insert data row by row to ensure correct field mapping
+                for _, row in normalized_df.iterrows():
+                    # Create dictionaries for db fields and extra fields
                     db_fields = {}
                     extra_fields = {}
 
-                    # Separate fields that are in the schema from those that are not
+                    # Process each field in the row
                     for col in row.index:
+                        value = row[col]
+
+                        # Skip None values
+                        if pd.isna(value) or value is None:
+                            continue
+
+                        # Direct match with DB columns
                         if col in db_columns:
-                            db_fields[col] = row[col]
+                            db_fields[col] = value
+
+                        # Check for match in our mapping (case-insensitive)
+                        elif col.lower() in column_map:
+                            db_col = column_map[col.lower()]
+                            db_fields[db_col] = value
+
+                        # For fields that don't have a direct mapping, try variations
                         else:
-                            # Skip NaN values
-                            if pd.notna(row[col]):
-                                extra_fields[col] = row[col]
+                            # Try S/s capitalization variations
+                            col_s_variation = col.lower().replace("s", "S")
+                            if col_s_variation in column_map:
+                                db_col = column_map[col_s_variation]
+                                db_fields[db_col] = value
+                            else:
+                                # Put in extras if no match found
+                                extra_fields[col] = value
 
-                    # Convert extra fields to JSON
-                    additional_data = json.dumps(extra_fields) if extra_fields else "{}"
-                    db_fields["additional_data"] = additional_data
+                    # Convert extra_fields to JSON string using our CustomJSONEncoder
+                    if extra_fields:
+                        try:
+                            extra_data_json = json.dumps(extra_fields, cls=CustomJSONEncoder)
+                            db_fields[FIELD_ADDITIONAL_DATA] = extra_data_json
+                            logger.debug(f"Extra fields pushed to additional_data: {list(extra_fields.keys())}")
+                        except TypeError as e:
+                            logger.warning(f"Could not convert extra fields to JSON: {e}")
+                            logger.debug(f"Problematic extra fields: {extra_fields}")
+                            # Store a safe empty JSON object instead
+                            db_fields[FIELD_ADDITIONAL_DATA] = "{}"
 
-                    # Create placeholders and values for SQL query
-                    placeholders = ", ".join(["?"] * len(db_fields))
-                    columns = ", ".join(db_fields.keys())
-                    values = list(db_fields.values())
+                    # Prepare SQL statement
+                    cols = list(db_fields.keys())
+                    placeholders = ", ".join(["?" for _ in cols])
+                    column_names = ", ".join(cols)
 
-                    # Insert into database
-                    conn.execute(f"INSERT OR REPLACE INTO market_data ({columns}) VALUES ({placeholders})", values)
+                    # Get values ensuring they are SQLite-compatible
+                    values = []
+                    for col in cols:
+                        val = db_fields[col]
+                        try:
+                            if isinstance(val, (list, dict)):
+                                # Convert complex types to JSON
+                                values.append(json.dumps(val, cls=CustomJSONEncoder))
+                            elif hasattr(val, "seconds") and hasattr(val, "nanoseconds"):
+                                # Handle Firebase Timestamp objects
+                                dt = datetime.fromtimestamp(val.seconds + val.nanoseconds / 1e9)
+                                values.append(dt.isoformat())
+                            else:
+                                # Append the value as is - SQLite will handle basic types
+                                values.append(val)
+                        except (TypeError, AttributeError) as e:
+                            logger.warning(f"Error processing value for column {col}: {e}")
+                            logger.debug(f"Value type: {type(val)}, Value: {val}")
+                            # Store a safe default value based on column type
+                            if "timestamp" in col.lower():
+                                values.append(datetime.now().isoformat())
+                            elif isinstance(val, (int, float, bool)):
+                                # Convert to str to ensure SQLite compatibility
+                                values.append(str(val))
+                            else:
+                                values.append(str(val))
+
+                    # Log for debugging
+                    logger.debug(f"Inserting row with columns: {cols}")
+                    logger.debug(f"First 5 values: {values[:5] if len(values) >= 5 else values}")
+
+                    # Insert data with REPLACE option to handle duplicate entries
+                    conn.execute(f"INSERT OR REPLACE INTO market_data ({column_names}) VALUES ({placeholders})", values)
 
                 # Update cache statistics
                 conn.execute(
@@ -719,3 +972,80 @@ class DataCacheService:
         except Exception as e:
             logger.error(f"Error backing up database: {e}")
             return False, str(e)
+
+    def _handle_shutdown(self, signum, frame):
+        """Handle graceful shutdown."""
+        logger.info("Shutting down DataCacheService...")
+        self.close()
+        sys.exit(0)
+
+    def close(self):
+        """Close database connection and clean up."""
+        # Nothing to do here currently
+        pass
+
+    def extract_trade_data_from_df(self, df):
+        """
+        Extract nested trade data fields from DataFrame.
+
+        Args:
+            df: DataFrame with possibly nested trade data
+
+        Returns:
+            DataFrame with flattened trade data fields
+        """
+        result_df = df.copy()
+
+        # Check if tradeLast5Seconds or tradeLast10Seconds are in columns
+        trade_columns = [col for col in df.columns if col in ["tradeLast5Seconds", "tradeLast10Seconds"]]
+
+        if not trade_columns:
+            return result_df
+
+        # Function to safely get value from nested dict
+        def get_nested(d, path, default=None):
+            if not isinstance(d, dict):
+                return default
+            parts = path.split(".")
+            current = d
+            for part in parts:
+                if isinstance(current, dict) and part in current:
+                    current = current[part]
+                else:
+                    return default
+            return current
+
+        # Extract trade data from 5s and 10s
+        for period in [5, 10]:
+            trade_col = f"tradeLast{period}Seconds"
+
+            if trade_col not in df.columns:
+                continue
+
+            # For each row, extract trade data
+            for i, row in df.iterrows():
+                trade_data = row.get(trade_col)
+                if not isinstance(trade_data, dict):
+                    continue
+
+                # Extract volume fields
+                for vol_type in ["buy", "sell", "bot"]:
+                    col_name = f"trade_last{period}Seconds_volume_{vol_type}"
+                    result_df.at[i, col_name] = get_nested(trade_data, f"volume.{vol_type}")
+
+                # Extract tradeCount fields
+                for side in ["buy", "sell"]:
+                    for size in ["small", "medium", "large", "big", "super"]:
+                        col_name = f"trade_last{period}Seconds_tradeCount_{side}_{size}"
+                        result_df.at[i, col_name] = get_nested(trade_data, f"tradeCount.{side}.{size}")
+
+                # Extract bot trade count
+                col_name = f"trade_last{period}Seconds_tradeCount_bot"
+                result_df.at[i, col_name] = get_nested(trade_data, "tradeCount.bot")
+
+        # Remove the original nested columns
+        for col in trade_columns:
+            if col in result_df.columns:
+                del result_df[col]
+
+        return result_df
