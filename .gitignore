@@ -51,6 +51,11 @@ logs/
 log/
 .mypy_cache/
 
+# Database files
+cache/*.db
+cache/*.sqlite
+cache/*.sqlite3
+
 # Credentials and secrets - NEVER commit these!
 firebase-key.json
 *credentials*.json

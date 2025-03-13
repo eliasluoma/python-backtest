@@ -8,6 +8,7 @@ It provides a unified interface to all functionality, including:
 - Analyzing market data
 - Exporting and visualizing results
 - Managing the SQLite data cache
+- Inspecting field naming conventions
 """
 
 import os
@@ -25,6 +26,7 @@ from src.cli.commands.analyze import add_analyze_subparser, handle_analyze_comma
 from src.cli.commands.export import add_export_subparser, handle_export_command
 from src.cli.commands.visualize import add_visualize_subparser, handle_visualize_command
 from src.cli.commands.cache import add_cache_subparser, handle_cache_command
+from src.cli.commands.fields import add_fields_subparser, handle_fields_command
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -60,6 +62,7 @@ def create_parser() -> argparse.ArgumentParser:
     add_export_subparser(subparsers)
     add_visualize_subparser(subparsers)
     add_cache_subparser(subparsers)
+    add_fields_subparser(subparsers)
 
     return parser
 
@@ -127,6 +130,8 @@ def main() -> int:
             return handle_visualize_command(args)
         elif args.command == "cache":
             return handle_cache_command(args)
+        elif args.command == "fields":
+            return handle_fields_command(args)
         else:
             logger.error(f"Unknown command: {args.command}")
             return 1
