@@ -229,16 +229,28 @@ The Python project includes CLI commands for cache management:
 
 ```bash
 # Update cache with latest data
-python -m src.cli cache update --all
+python -m src.cli.main cache update --all
 
 # Update specific pools
-python -m src.cli cache update --pools pool1 pool2 pool3
+python -m src.cli.main cache update --pools pool1 pool2 pool3
+
+# Import pools from Firebase to cache
+python -m src.cli.main cache import  # Imports all available pools with at least 600 data points
+
+# Import with limit
+python -m src.cli.main cache import --limit 50 --min-points 1000
+
+# Import specific pools
+python -m src.cli.main cache import --pools pool1 pool2 pool3
 
 # Clear old data (older than 30 days)
-python -m src.cli cache clear --older-than 30
+python -m src.cli.main cache clear --days 30
 
 # Check cache status
-python -m src.cli cache status
+python -m src.cli.main cache status
+
+# Backup cache
+python -m src.cli.main cache backup
 ```
 
 ### Synchronization Between Projects

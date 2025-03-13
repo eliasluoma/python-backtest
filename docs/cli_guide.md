@@ -41,6 +41,7 @@ The following commands are available:
 - [`analyze`](#analyze-command): Analyze market data
 - [`export`](#export-command): Export pool data to JSON files
 - [`visualize`](#visualize-command): Generate visualizations from data
+- [`cache`](#cache-command): Manage the local data cache
 
 ### Simulate Command
 
@@ -237,6 +238,98 @@ Visualize simulation results:
 Compare strategies:
 ```bash
 ./solana_simulator.py visualize compare --input outputs/strategy1.json outputs/strategy2.json --labels "Aggressive" "Conservative"
+```
+
+### Cache Command
+
+The `cache` command provides functionality for managing the local SQLite cache:
+
+```bash
+./solana_simulator.py cache [subcommand] [options]
+```
+
+#### Subcommands
+
+**import**: Import pools from Firebase to local cache
+```bash
+./solana_simulator.py cache import [options]
+```
+
+Options:
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--pools`, `-p` | Specific pools to import | None (imports pools up to the limit) |
+| `--limit`, `-l` | Maximum number of pools to import | None (imports all available pools) |
+| `--min-points`, `-m` | Minimum data points required for a pool to be imported | 600 (10 minutes) |
+| `--schema`, `-s` | Path to schema file | updated_schema.sql |
+
+**update**: Update cache with latest data
+```bash
+./solana_simulator.py cache update [options]
+```
+
+Options:
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--pools`, `-p` | Specific pools to update | None (updates all pools) |
+| `--recent`, `-r` | Update only recently active pools | False |
+| `--min-points`, `-m` | Minimum data points required in cache | 0 |
+
+**clear**: Clear the cache
+```bash
+./solana_simulator.py cache clear [options]
+```
+
+Options:
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--days`, `-d` | Clear data older than specified days | None (clears entire cache) |
+
+**status**: Show cache status
+```bash
+./solana_simulator.py cache status
+```
+
+**backup**: Create a backup of the cache
+```bash
+./solana_simulator.py cache backup [options]
+```
+
+Options:
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--output`, `-o` | Output path for backup | None (creates in default location) |
+
+#### Examples
+
+Import all available pools with at least 600 data points:
+```bash
+./solana_simulator.py cache import
+```
+
+Import specific pools:
+```bash
+./solana_simulator.py cache import --pools pool1 pool2 pool3
+```
+
+Import a limited number of pools:
+```bash
+./solana_simulator.py cache import --limit 20 --min-points 1000
+```
+
+Update cache with latest data for all pools:
+```bash
+./solana_simulator.py cache update
+```
+
+Show cache status:
+```bash
+./solana_simulator.py cache status
+```
+
+Clear entire cache:
+```bash
+./solana_simulator.py cache clear
 ```
 
 ## Exit Codes
