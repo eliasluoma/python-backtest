@@ -256,6 +256,7 @@ Options:
 | `--limit`, `-l` | Maximum number of pools to import | None (imports all available pools) |
 | `--min-points`, `-m` | Minimum data points required for a pool to be imported | 600 (10 minutes) |
 | `--schema`, `-s` | Path to schema file | schema.sql |
+| `--new-only`, `-n` | Import only pools that don't exist in the local cache | False |
 
 **update**: Update cache with latest data
 ```

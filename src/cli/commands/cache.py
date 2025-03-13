@@ -50,6 +50,9 @@ def add_cache_subparser(subparsers):
         help="Minimum data points required for a pool to be imported (default: 600 = 10 minutes)",
     )
     import_parser.add_argument("--schema", "-s", type=str, help="Path to schema file (defaults to schema.sql)")
+    import_parser.add_argument(
+        "--new-only", "-n", action="store_true", help="Import only pools that don't exist in the local cache"
+    )
 
     # Clear command
     clear_parser = cache_subparsers.add_parser("clear", help="Clear cache")
@@ -241,6 +244,7 @@ def import_pools(
     pool_ids: List[str] = None,
     limit: Optional[int] = None,
     min_data_points: int = 600,
+    new_only: bool = False,
 ) -> bool:
     """
     Import pools from Firebase to SQLite cache with specific criteria.
@@ -251,6 +255,7 @@ def import_pools(
         pool_ids: Specific pool IDs to import (if None, imports pools up to the limit)
         limit: Maximum number of pools to import (if None, imports all available pools)
         min_data_points: Minimum number of data points required for a pool to be imported
+        new_only: If True, only import pools that don't exist in the local cache
 
     Returns:
         bool: Whether the import was successful
@@ -273,6 +278,27 @@ def import_pools(
     logger.info(
         f"Found {len(all_pools)} pools in Firebase, importing {'all' if limit is None else f'up to {limit}'} pools"
     )
+
+    # If new_only is True, filter out pools that already exist in the cache
+    if new_only:
+        # Get existing pool IDs from cache
+        existing_pools = cache_service.get_pool_ids(limit=100000)  # Get all existing pools
+
+        # Filter pools to only those not in the cache
+        filtered_pools = [pool_id for pool_id in all_pools if pool_id not in existing_pools]
+
+        # Log how many pools we filtered out
+        filtered_out = len(all_pools) - len(filtered_pools)
+        logger.info(f"Filtered out {filtered_out} pools that already exist in the cache")
+        logger.info(f"Remaining pools to import: {len(filtered_pools)}")
+
+        # Use the filtered list
+        all_pools = filtered_pools
+
+        # If no new pools to import, we're done
+        if not all_pools:
+            logger.info("No new pools to import")
+            return True
 
     success_count = 0
     error_count = 0
@@ -374,7 +400,12 @@ def handle_cache_command(args: argparse.Namespace):
         cache_service = DataCacheService(db_path=str(db_path), schema_path=str(schema_path))
 
         return import_pools(
-            cache_service, firebase_service, pool_ids=args.pools, limit=args.limit, min_data_points=args.min_points
+            cache_service,
+            firebase_service,
+            pool_ids=args.pools,
+            limit=args.limit,
+            min_data_points=args.min_points,
+            new_only=args.new_only,
         )
 
     else:
