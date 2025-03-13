@@ -16,6 +16,9 @@ from typing import Dict, List, Union, Optional, Any, Tuple
 import pandas as pd
 from functools import lru_cache
 
+# Import field utilities
+from src.utils.field_utils import normalize_dataframe_columns
+
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -546,53 +549,8 @@ class DataCacheService:
         Returns:
             DataFrame with standardized column names
         """
-        # Make a copy of the DataFrame to avoid modifying the original
-        result = df.copy()
-
-        # Map of common camelCase to snake_case names
-        name_map = {
-            "poolAddress": "pool_id",
-            "marketCap": "market_cap",
-            "currentPrice": "current_price",
-            "lastPrice": "last_price",
-            "athMarketCap": "ath_market_cap",
-            "minMarketCap": "min_market_cap",
-            "maMarketCap10s": "ma_market_cap_10s",
-            "maMarketCap30s": "ma_market_cap_30s",
-            "maMarketCap60s": "ma_market_cap_60s",
-            "marketCapChange5s": "market_cap_change_5s",
-            "marketCapChange10s": "market_cap_change_10s",
-            "marketCapChange30s": "market_cap_change_30s",
-            "marketCapChange60s": "market_cap_change_60s",
-            "priceChangePercent": "price_change_percent",
-            "priceChangeFromStart": "price_change_from_start",
-            "holdersCount": "holders_count",
-            "initialHoldersCount": "initial_holders_count",
-            "holdersGrowthFromStart": "holders_growth_from_start",
-            "holderDelta5s": "holder_delta_5s",
-            "holderDelta10s": "holder_delta_10s",
-            "holderDelta30s": "holder_delta_30s",
-            "holderDelta60s": "holder_delta_60s",
-            "buyVolume5s": "buy_volume_5s",
-            "buyVolume10s": "buy_volume_10s",
-            "netVolume5s": "net_volume_5s",
-            "netVolume10s": "net_volume_10s",
-            "totalVolume": "total_volume",
-            "largeBuy5s": "large_buy_5s",
-            "largeBuy10s": "large_buy_10s",
-            "bigBuy5s": "big_buy_5s",
-            "bigBuy10s": "big_buy_10s",
-            "superBuy5s": "super_buy_5s",
-            "superBuy10s": "super_buy_10s",
-            "timeFromStart": "time_from_start",
-        }
-
-        # Rename columns based on mapping
-        columns_to_rename = {col: name_map[col] for col in result.columns if col in name_map}
-        if columns_to_rename:
-            result = result.rename(columns=columns_to_rename)
-
-        return result
+        # Use the normalize_dataframe_columns utility to handle mixed naming conventions
+        return normalize_dataframe_columns(df)
 
     def get_pool_ids(self, limit: int = 100, min_data_points: int = 0) -> List[str]:
         """
