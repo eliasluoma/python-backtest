@@ -11,13 +11,7 @@ The Solana Trading Simulator provides a unified command-line interface for all f
 The basic syntax for the CLI is:
 
 ```bash
-./solana_simulator.py [command] [subcommand] [options]
-```
-
-Or alternatively:
-
-```bash
-python solana_simulator.py [command] [subcommand] [options]
+python -m src.cli.main [command] [subcommand] [options]
 ```
 
 ## Global Options
@@ -48,7 +42,7 @@ The following commands are available:
 The `simulate` command runs a trading simulation with configurable parameters:
 
 ```bash
-./solana_simulator.py simulate [options]
+python -m src.cli.main simulate [options]
 ```
 
 #### Options
@@ -84,22 +78,22 @@ The `simulate` command runs a trading simulation with configurable parameters:
 
 Run a simulation with default parameters:
 ```bash
-./solana_simulator.py simulate --credentials firebase-key.json
+python -m src.cli.main simulate --credentials firebase-key.json
 ```
 
 Run with custom buy parameters:
 ```bash
-./solana_simulator.py simulate --credentials firebase-key.json --mc-change-5s 8.0 --holder-delta-30s 30 --buy-volume-5s 8.0
+python -m src.cli.main simulate --credentials firebase-key.json --mc-change-5s 8.0 --holder-delta-30s 30 --buy-volume-5s 8.0
 ```
 
 Run with custom sell parameters:
 ```bash
-./solana_simulator.py simulate --credentials firebase-key.json --take-profit 2.5 --stop-loss 0.7 --trailing-stop 0.85
+python -m src.cli.main simulate --credentials firebase-key.json --take-profit 2.5 --stop-loss 0.7 --trailing-stop 0.85
 ```
 
 Run a buy-only simulation:
 ```bash
-./solana_simulator.py simulate --credentials firebase-key.json --skip-sell
+python -m src.cli.main simulate --credentials firebase-key.json --skip-sell
 ```
 
 ### Analyze Command
@@ -107,14 +101,14 @@ Run a buy-only simulation:
 The `analyze` command provides tools for analyzing market data:
 
 ```bash
-./solana_simulator.py analyze [subcommand] [options]
+python -m src.cli.main analyze [subcommand] [options]
 ```
 
 #### Subcommands
 
 **all**: Analyze all pools
 ```bash
-./solana_simulator.py analyze all [options]
+python -m src.cli.main analyze all [options]
 ```
 
 Options:
@@ -124,7 +118,7 @@ Options:
 
 **invalid**: Analyze invalid pools
 ```bash
-./solana_simulator.py analyze invalid [options]
+python -m src.cli.main analyze invalid [options]
 ```
 
 Options:
@@ -139,12 +133,12 @@ Options:
 
 Analyze all pools:
 ```bash
-./solana_simulator.py analyze all
+python -m src.cli.main analyze all
 ```
 
 Analyze invalid pools:
 ```bash
-./solana_simulator.py analyze invalid --input outputs/invalid_pools.json --max-pools 5
+python -m src.cli.main analyze invalid --input outputs/invalid_pools.json --max-pools 5
 ```
 
 ### Export Command
@@ -152,7 +146,7 @@ Analyze invalid pools:
 The `export` command exports pool data to JSON or CSV files:
 
 ```bash
-./solana_simulator.py export [options]
+python -m src.cli.main export [options]
 ```
 
 #### Options
@@ -168,12 +162,12 @@ The `export` command exports pool data to JSON or CSV files:
 
 Export pool data to JSON:
 ```bash
-./solana_simulator.py export --input outputs/valid_pools.json
+python -m src.cli.main export --input outputs/valid_pools.json
 ```
 
 Export with row limit and specific output format:
 ```bash
-./solana_simulator.py export --input outputs/valid_pools.json --max-rows 1000 --format csv
+python -m src.cli.main export --input outputs/valid_pools.json --max-rows 1000 --format csv
 ```
 
 ### Visualize Command
@@ -181,14 +175,14 @@ Export with row limit and specific output format:
 The `visualize` command generates visualizations from data:
 
 ```bash
-./solana_simulator.py visualize [subcommand] [options]
+python -m src.cli.main visualize [subcommand] [options]
 ```
 
 #### Subcommands
 
 **market**: Visualize market data
 ```bash
-./solana_simulator.py visualize market [options]
+python -m src.cli.main visualize market [options]
 ```
 
 Options:
@@ -201,7 +195,7 @@ Options:
 
 **results**: Visualize simulation results
 ```bash
-./solana_simulator.py visualize results [options]
+python -m src.cli.main visualize results [options]
 ```
 
 Options:
@@ -213,7 +207,7 @@ Options:
 
 **compare**: Compare different strategies
 ```bash
-./solana_simulator.py visualize compare [options]
+python -m src.cli.main visualize compare [options]
 ```
 
 Options:
@@ -227,17 +221,17 @@ Options:
 
 Visualize market data:
 ```bash
-./solana_simulator.py visualize market --input outputs/exported_pools/pool_data.json
+python -m src.cli.main visualize market --input outputs/exported_pools/pool_data.json
 ```
 
 Visualize simulation results:
 ```bash
-./solana_simulator.py visualize results --input outputs/trades_2023-03-15.json
+python -m src.cli.main visualize results --input outputs/trades_2023-03-15.json
 ```
 
 Compare strategies:
 ```bash
-./solana_simulator.py visualize compare --input outputs/strategy1.json outputs/strategy2.json --labels "Aggressive" "Conservative"
+python -m src.cli.main visualize compare --input outputs/strategy1.json outputs/strategy2.json --labels "Aggressive" "Conservative"
 ```
 
 ### Cache Command
@@ -245,14 +239,14 @@ Compare strategies:
 The `cache` command provides functionality for managing the local SQLite cache:
 
 ```bash
-./solana_simulator.py cache [subcommand] [options]
+python -m src.cli.main cache [subcommand] [options]
 ```
 
 #### Subcommands
 
 **import**: Import pools from Firebase to local cache
 ```bash
-./solana_simulator.py cache import [options]
+python -m src.cli.main cache import [options]
 ```
 
 Options:
@@ -265,7 +259,7 @@ Options:
 
 **update**: Update cache with latest data
 ```bash
-./solana_simulator.py cache update [options]
+python -m src.cli.main cache update [options]
 ```
 
 Options:
@@ -277,7 +271,7 @@ Options:
 
 **clear**: Clear the cache
 ```bash
-./solana_simulator.py cache clear [options]
+python -m src.cli.main cache clear [options]
 ```
 
 Options:
@@ -287,12 +281,12 @@ Options:
 
 **status**: Show cache status
 ```bash
-./solana_simulator.py cache status
+python -m src.cli.main cache status
 ```
 
 **backup**: Create a backup of the cache
 ```bash
-./solana_simulator.py cache backup [options]
+python -m src.cli.main cache backup [options]
 ```
 
 Options:
@@ -304,32 +298,32 @@ Options:
 
 Import all available pools with at least 600 data points:
 ```bash
-./solana_simulator.py cache import
+python -m src.cli.main cache import
 ```
 
 Import specific pools:
 ```bash
-./solana_simulator.py cache import --pools pool1 pool2 pool3
+python -m src.cli.main cache import --pools pool1 pool2 pool3
 ```
 
 Import a limited number of pools:
 ```bash
-./solana_simulator.py cache import --limit 20 --min-points 1000
+python -m src.cli.main cache import --limit 20 --min-points 1000
 ```
 
 Update cache with latest data for all pools:
 ```bash
-./solana_simulator.py cache update
+python -m src.cli.main cache update
 ```
 
 Show cache status:
 ```bash
-./solana_simulator.py cache status
+python -m src.cli.main cache status
 ```
 
 Clear entire cache:
 ```bash
-./solana_simulator.py cache clear
+python -m src.cli.main cache clear
 ```
 
 ## Exit Codes
