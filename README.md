@@ -80,6 +80,58 @@ pool_data = firebase_service.fetch_market_data(pool_address=pool_address)
 recent_data = firebase_service.fetch_recent_market_data(hours_back=24)
 ```
 
+### Pool Analysis Tools
+
+The project includes several analysis tools for examining trading pools:
+
+#### Analyzing All Pools
+
+This tool analyzes all pools in Firebase and produces a comprehensive report:
+
+```bash
+python -m src.analysis.cli analyze-all
+```
+
+The report includes:
+- How many pools have all required fields
+- How many pools have at least 600 rows (approx. 10 min of data)
+- How many pools have at least 1100 rows (approx. 18 min of data)
+- Analysis of missing fields (which fields are missing and how often)
+- Analysis of naming conventions (snake_case vs. camelCase)
+
+Analysis results are saved in the `outputs` directory.
+
+#### Analyzing Invalid Pools
+
+This tool performs detailed analysis of pools identified as invalid:
+
+```bash
+python -m src.analysis.cli analyze-invalid --input outputs/invalid_pools.json
+```
+
+Parameters:
+- `--input`: Path to JSON file containing invalid pool IDs
+- `--output`: Path to save the analysis results
+- `--max-pools`: Maximum number of pools to analyze
+- `--limit-per-pool`: Maximum number of data points to fetch per pool
+
+The analysis identifies specific issues with each pool and produces statistics on common problems.
+
+#### Exporting Pool Data
+
+This tool exports data from specified pools to JSON files:
+
+```bash
+python -m src.analysis.cli export --input outputs/valid_pools.json
+```
+
+Parameters:
+- `--input`: Path to JSON file containing pool IDs (required)
+- `--output-dir`: Directory to save the exported data
+- `--max-rows`: Maximum number of rows to export per pool
+
+Each pool's data is saved as a separate JSON file with metadata.
+
 ### Analyzing Market Data
 
 You can run the market data analysis script to analyze and visualize the Firebase data:
