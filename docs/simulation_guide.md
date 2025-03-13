@@ -2,11 +2,25 @@
 
 This guide provides detailed instructions for running different types of simulations with the Solana Trading Strategy Simulator.
 
-## Basic Simulation
+## Unified CLI
 
-The simplest way to run a simulation is using the main script with default parameters:
+The recommended way to run simulations is using the new unified CLI:
 
 ```bash
+./solana_simulator.py simulate --credentials firebase-key.json
+```
+
+For detailed documentation of all CLI options, see the [CLI Guide](cli_guide.md).
+
+## Basic Simulation
+
+The simplest way to run a simulation is using the appropriate command:
+
+```bash
+# Using the unified CLI (recommended)
+./solana_simulator.py simulate --credentials firebase-key.json
+
+# Using the legacy script
 python scripts/run_simulation.py --credentials firebase-key.json
 ```
 
@@ -25,7 +39,7 @@ You can customize various aspects of the simulation by providing command line ar
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `--credentials` | Path to Firebase credentials JSON file | Required |
-| `--env-file` | Path to .env file for additional configuration | None |
+| `--env-file` | Path to .env file for additional configuration | .env.local |
 | `--max-pools` | Maximum number of pools to analyze | 10 |
 | `--min-data-points` | Minimum data points required per pool | 100 |
 
