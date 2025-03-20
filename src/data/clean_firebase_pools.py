@@ -9,6 +9,7 @@ Usage:
     python clean_firebase_pools.py --analyze     # Just analyze, don't delete anything
     python clean_firebase_pools.py --cleanup     # Run the cleanup operation
     python clean_firebase_pools.py --backup      # Only perform a backup
+    python clean_firebase_pools.py --check-ref   # Check reference pools structure
 """
 
 import os
@@ -16,9 +17,8 @@ import json
 import time
 import logging
 import argparse
-import pandas as pd
 from datetime import datetime
-from typing import Dict, List, Tuple, Set, Optional
+from typing import Dict, List, Tuple, Optional
 
 # Import FirebaseService from the project
 try:
@@ -53,6 +53,140 @@ class FirebasePoolCleaner:
         if not os.path.exists(self.backup_dir):
             os.makedirs(self.backup_dir)
             logger.info(f"Created backup directory: {self.backup_dir}")
+
+        # Reference pools from check_fields.py
+        self.ref_pools = {
+            "pool1_format": "2vpAeyJCX7Wi93cXLuSaZYZb78JGSCjYML345jW3DUN2",
+            "pool2_format": "12H7zN3gXRfUeu2fCQjooPAofbBL2wz7X7wKoS44oJkX",
+        }
+
+    def analyze_reference_pools(self) -> None:
+        """
+        Analyze the reference pools to understand their structure.
+        This helps in understanding what to look for when cleaning/importing data.
+        """
+        logger.info("Analyzing reference pools structure...")
+
+        results = {}
+
+        for pool_type, pool_id in self.ref_pools.items():
+            logger.info(f"Analyzing {pool_type} pool: {pool_id}")
+
+            try:
+                # Fetch pool data
+                pool_data = self.firebase.fetch_pool_data(pool_id)
+
+                if pool_data.empty:
+                    logger.warning(f"No data found for {pool_type} pool {pool_id}")
+                    continue
+
+                # Get data shape
+                data_points = len(pool_data)
+                fields_count = len(pool_data.columns)
+
+                # Get the first row
+                first_row = pool_data.iloc[0].to_dict()
+
+                # Get the flattened row
+                flattened_row = self.firebase.prepare_for_database(first_row)
+                fields_count_flat = len(flattened_row)
+
+                # Check for volume data in different formats
+                volume_fields = []
+
+                # Check for flattened format (trade_last5Seconds_volume_buy)
+                for col in pool_data.columns:
+                    if "volume" in col.lower() and ("buy" in col.lower() or "sell" in col.lower()):
+                        volume_fields.append(col)
+
+                # Check for nested format
+                nested_volume_fields = []
+                if "tradeLast5Seconds" in first_row and isinstance(first_row["tradeLast5Seconds"], dict):
+                    if "volume" in first_row["tradeLast5Seconds"]:
+                        nested_volume_fields.append("tradeLast5Seconds.volume")
+
+                if "tradeLast10Seconds" in first_row and isinstance(first_row["tradeLast10Seconds"], dict):
+                    if "volume" in first_row["tradeLast10Seconds"]:
+                        nested_volume_fields.append("tradeLast10Seconds.volume")
+
+                # Store results
+                results[pool_type] = {
+                    "pool_id": pool_id,
+                    "data_points": data_points,
+                    "fields_count": fields_count,
+                    "fields_count_flattened": fields_count_flat,
+                    "volume_fields": volume_fields,
+                    "nested_volume_fields": nested_volume_fields,
+                    "sample_fields": list(pool_data.columns[:20]),  # First 20 fields
+                    "sample_fields_flattened": list(flattened_row.keys())[:20],  # First 20 flattened fields
+                }
+
+                # Search for indicators of data quality
+                has_timestamp = "timestamp" in pool_data.columns
+                has_market_cap = any("marketCap" in col for col in pool_data.columns)
+
+                results[pool_type]["has_timestamp"] = has_timestamp
+                results[pool_type]["has_market_cap"] = has_market_cap
+
+                logger.info(f"Pool {pool_id} ({pool_type}) analysis complete:")
+                logger.info(f"  - Data points: {data_points}")
+                logger.info(f"  - Fields: {fields_count} (original), {fields_count_flat} (flattened)")
+                logger.info(
+                    f"  - Volume fields: {len(volume_fields)} (flattened), {len(nested_volume_fields)} (nested)"
+                )
+
+            except Exception as e:
+                logger.error(f"Error analyzing reference pool {pool_id}: {e}")
+                results[pool_type] = {"error": str(e)}
+
+        # Save results to file
+        with open(os.path.join(self.backup_dir, "reference_pools_analysis.json"), "w") as f:
+            json.dump(results, f, indent=2)
+
+        logger.info(
+            f"Reference pools analysis complete. Results saved to {self.backup_dir}/reference_pools_analysis.json"
+        )
+
+        # Print summary of key differences
+        logger.info("\n=== REFERENCE POOLS STRUCTURE COMPARISON ===")
+        if "pool1_format" in results and "pool2_format" in results:
+            p1 = results["pool1_format"]
+            p2 = results["pool2_format"]
+
+            if isinstance(p1, dict) and isinstance(p2, dict) and "error" not in p1 and "error" not in p2:
+                logger.info(
+                    f"Pool 1 format: {p1.get('fields_count', 'N/A')} fields ({p1.get('fields_count_flattened', 'N/A')} flattened)"
+                )
+                logger.info(
+                    f"Pool 2 format: {p2.get('fields_count', 'N/A')} fields ({p2.get('fields_count_flattened', 'N/A')} flattened)"
+                )
+
+                # Compare volume field structure
+                logger.info("\nVolume data structure:")
+                logger.info(f"Pool 1 volume fields: {p1.get('volume_fields', [])}")
+                logger.info(f"Pool 1 nested volume: {p1.get('nested_volume_fields', [])}")
+                logger.info(f"Pool 2 volume fields: {p2.get('volume_fields', [])}")
+                logger.info(f"Pool 2 nested volume: {p2.get('nested_volume_fields', [])}")
+
+                # Identify common and different fields
+                if "sample_fields" in p1 and "sample_fields" in p2:
+                    p1_fields = set(p1["sample_fields"])
+                    p2_fields = set(p2["sample_fields"])
+                    common_fields = p1_fields.intersection(p2_fields)
+                    p1_only = p1_fields - p2_fields
+                    p2_only = p2_fields - p1_fields
+
+                    logger.info("\nCommon fields: ")
+                    for field in sorted(common_fields):
+                        logger.info(f"  - {field}")
+
+                    logger.info("\nPool 1 specific fields: ")
+                    for field in sorted(p1_only):
+                        logger.info(f"  - {field}")
+
+                    logger.info("\nPool 2 specific fields: ")
+                    for field in sorted(p2_only):
+                        logger.info(f"  - {field}")
 
     def analyze_pools(self) -> Tuple[Dict[str, int], List[str], List[str], List[str]]:
         """
@@ -275,15 +409,21 @@ class FirebasePoolCleaner:
         logger.info(f"Deletion completed. {success_count} successful, {error_count} failed.")
         return success_count
 
-    def run_cleanup(self, analyze_only: bool = False, backup_only: bool = False) -> None:
+    def run_cleanup(self, analyze_only: bool = False, backup_only: bool = False, check_ref: bool = False) -> None:
         """
         Run the full cleanup process.
 
         Args:
             analyze_only: If True, only analyze but don't delete
             backup_only: If True, only backup all pools without deletion
+            check_ref: If True, only analyze reference pools
         """
         try:
+            # If check_ref flag is set, only analyze reference pools
+            if check_ref:
+                self.analyze_reference_pools()
+                return
+
             # Get analysis data
             pools_counts, low_data_pools, no_volume_pools, pools_to_keep = self.analyze_pools()
 
@@ -354,18 +494,21 @@ def main():
     parser.add_argument("--analyze", action="store_true", help="Only analyze, don't delete anything")
     parser.add_argument("--cleanup", action="store_true", help="Run the cleanup operation")
     parser.add_argument("--backup", action="store_true", help="Only perform a backup of all pools")
+    parser.add_argument("--check-ref", action="store_true", help="Check reference pools structure")
     parser.add_argument("--credential-path", help="Path to Firebase credentials JSON file")
 
     args = parser.parse_args()
 
     # If no arguments provided, default to analyze mode
-    if not (args.analyze or args.cleanup or args.backup):
+    if not (args.analyze or args.cleanup or args.backup or args.check_ref):
         args.analyze = True
         logger.info("No mode specified, defaulting to analyze-only mode")
 
     cleaner = FirebasePoolCleaner(credential_path=args.credential_path)
 
-    if args.analyze:
+    if args.check_ref:
+        cleaner.run_cleanup(check_ref=True)
+    elif args.analyze:
         cleaner.run_cleanup(analyze_only=True)
     elif args.backup:
         cleaner.run_cleanup(backup_only=True)
