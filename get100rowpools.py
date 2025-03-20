@@ -129,7 +129,7 @@ if __name__ == '__main__':
     cache_service = DataCacheService(DB_PATH, SCHEMA_PATH)
     
     # Voit säätää haettavien poolien määrää tästä
-    pool_limit = 20  # Hae 20 poolia testaukseen
+    pool_limit = 5000  # Hae 20 poolia testaukseen
     
     pool_ids = firebase_service.get_available_pools(limit=pool_limit)
     logger.info(f"Löydettiin {len(pool_ids)} poolia.")
