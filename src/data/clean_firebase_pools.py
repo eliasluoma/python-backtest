@@ -561,8 +561,8 @@ class FirebasePoolCleaner:
         self, collection_name: str = "marketContext", backup_collection_name: str = "backup_marketContext"
     ) -> bool:
         """
-        Create a backup of an entire collection by copying ALL documents and ALL subcollections at once.
-        This copies the ENTIRE structure exactly as it exists in Firestore.
+        Create a backup of the entire marketContext collection with all marketContexts subcollections.
+        Uses direct paths instead of collections() method which might not work properly.
 
         Args:
             collection_name: Name of the collection to backup (default: "marketContext")
@@ -575,105 +575,130 @@ class FirebasePoolCleaner:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_collection_name = f"{backup_collection_name}_{timestamp}"
 
-        logger.info(f"Starting COMPLETE backup of entire {collection_name} collection to {backup_collection_name}...")
+        logger.info(f"Starting DIRECT backup of {collection_name} collection to {backup_collection_name}...")
         start_time = time.time()
 
         # Statistics tracking
-        copied_docs = 0
+        copied_main_docs = 0
+        copied_subcoll_docs = 0
         failed_docs = 0
 
         try:
-            # Define recursive function to copy documents and all their subcollections
-            def copy_document_with_subcollections(source_path, target_path):
-                nonlocal copied_docs, failed_docs
-
-                # Get the document
-                source_doc = self.firebase.db.document(source_path).get()
-                if not source_doc.exists:
-                    logger.warning(f"Document does not exist: {source_path}")
-                    return
-
-                # Copy the document data
-                try:
-                    doc_data = source_doc.to_dict()
-                    self.firebase.db.document(target_path).set(doc_data)
-                    copied_docs += 1
-
-                    # Log progress every 100 documents
-                    if copied_docs % 100 == 0:
-                        elapsed = time.time() - start_time
-                        docs_per_second = copied_docs / elapsed if elapsed > 0 else 0
-                        logger.info(f"Copied {copied_docs} documents ({docs_per_second:.2f} docs/s)")
-
-                except Exception as e:
-                    logger.error(f"Error copying document {source_path}: {str(e)}")
-                    failed_docs += 1
-                    return
-
-                # Get all subcollections of this document
-                subcollections = self.firebase.db.document(source_path).collections()
-
-                # Copy each subcollection
-                for subcoll in subcollections:
-                    subcoll_name = subcoll.id
-
-                    # Log that we're copying this subcollection
-                    logger.info(f"Copying subcollection: {source_path}/{subcoll_name}")
-
-                    # Get all documents in this subcollection
-                    subcoll_docs = list(subcoll.stream())
-                    logger.info(f"Found {len(subcoll_docs)} documents in {source_path}/{subcoll_name}")
-
-                    # Copy each document in the subcollection (and its subcollections)
-                    for doc in subcoll_docs:
-                        doc_id = doc.id
-                        source_doc_path = f"{source_path}/{subcoll_name}/{doc_id}"
-                        target_doc_path = f"{target_path}/{subcoll_name}/{doc_id}"
-
-                        # Recursively copy this document and all its subcollections
-                        copy_document_with_subcollections(source_doc_path, target_doc_path)
-
             # Get all top-level documents in the source collection
             source_collection = self.firebase.db.collection(collection_name)
             all_docs = list(source_collection.stream())
-            logger.info(f"Found {len(all_docs)} top-level documents in {collection_name} collection")
+            total_pools = len(all_docs)
+            logger.info(f"Found {total_pools} pool documents in {collection_name} collection")
 
-            # Process top-level documents
-            for doc in all_docs:
-                doc_id = doc.id
-                source_path = f"{collection_name}/{doc_id}"
-                target_path = f"{backup_collection_name}/{doc_id}"
+            # Process pool documents in batches
+            batch_size = 10  # Use smaller batches to avoid timeouts
+            for i in range(0, total_pools, batch_size):
+                batch_start = time.time()
+                current_batch = all_docs[i : i + batch_size]
+                logger.info(
+                    f"Processing batch {i//batch_size + 1}/{(total_pools-1)//batch_size + 1}: {len(current_batch)} pools"
+                )
 
-                logger.info(f"Processing {source_path}")
-                copy_document_with_subcollections(source_path, target_path)
+                for pool_doc in current_batch:
+                    pool_id = pool_doc.id
 
-                # Give Firestore a short break after each top-level document
-                time.sleep(0.1)
+                    try:
+                        # Copy the main pool document
+                        logger.info(f"Copying main document for pool {pool_id}")
+                        target_doc = self.firebase.db.collection(backup_collection_name).document(pool_id)
+                        target_doc.set(pool_doc.to_dict() or {})
+                        copied_main_docs += 1
+
+                        # Directly access the marketContexts subcollection - we know it exists
+                        subcoll_path = f"{collection_name}/{pool_id}/marketContexts"
+                        logger.info(f"Accessing marketContexts for pool {pool_id} at path {subcoll_path}")
+
+                        # We access the subcollection directly
+                        subcoll_ref = self.firebase.db.collection(subcoll_path)
+                        subcoll_docs = list(subcoll_ref.stream())
+
+                        if subcoll_docs:
+                            doc_count = len(subcoll_docs)
+                            logger.info(f"Found {doc_count} marketContexts documents for pool {pool_id}")
+
+                            # Process in smaller batches to avoid write errors
+                            context_batch_size = 300  # Firestore has a limit of 500 per batch, be conservative
+                            for j in range(0, doc_count, context_batch_size):
+                                current_contexts = subcoll_docs[j : j + context_batch_size]
+                                logger.info(
+                                    f"Processing context batch {j//context_batch_size + 1}/{(doc_count-1)//context_batch_size + 1} for pool {pool_id}"
+                                )
+
+                                # Create a batch for efficient writing
+                                write_batch = self.firebase.db.batch()
+
+                                for context_doc in current_contexts:
+                                    # Create reference to the target context document
+                                    target_context_ref = target_doc.collection("marketContexts").document(
+                                        context_doc.id
+                                    )
+                                    write_batch.set(target_context_ref, context_doc.to_dict())
+
+                                # Commit this batch of context documents
+                                write_batch.commit()
+                                copied_subcoll_docs += len(current_contexts)
+                                logger.info(f"Committed {len(current_contexts)} context documents for pool {pool_id}")
+
+                                # Give Firebase a short break
+                                time.sleep(0.1)
+                        else:
+                            logger.warning(f"No marketContexts documents found for pool {pool_id}")
+
+                    except Exception as e:
+                        logger.error(f"Error processing pool {pool_id}: {str(e)}")
+                        failed_docs += 1
+
+                # Log batch performance
+                batch_time = time.time() - batch_start
+                docs_per_sec = (len(current_batch) + copied_subcoll_docs) / batch_time if batch_time > 0 else 0
+                logger.info(f"Batch completed in {batch_time:.2f}s ({docs_per_sec:.2f} docs/s)")
+
+                # Overall progress update
+                elapsed = time.time() - start_time
+                progress = (i + len(current_batch)) / total_pools
+                remaining = (elapsed / progress) - elapsed if progress > 0 else 0
+
+                logger.info(
+                    f"Progress: {progress:.1%} - Pools: {copied_main_docs}/{total_pools} - "
+                    + f"Context docs: {copied_subcoll_docs} - "
+                    + f"Time: {elapsed:.1f}s elapsed, ~{remaining:.1f}s remaining"
+                )
+
+                # Add a delay between batches
+                time.sleep(0.5)
 
             # Save summary
             total_time = time.time() - start_time
-            docs_per_second = copied_docs / total_time if total_time > 0 else 0
+            total_docs = copied_main_docs + copied_subcoll_docs
+            docs_per_second = total_docs / total_time if total_time > 0 else 0
 
             summary = {
                 "timestamp": datetime.now().isoformat(),
                 "source_collection": collection_name,
-                "total_documents_copied": copied_docs,
-                "failed_documents": failed_docs,
+                "pool_documents_copied": copied_main_docs,
+                "context_documents_copied": copied_subcoll_docs,
+                "total_documents_copied": total_docs,
+                "failed_operations": failed_docs,
                 "execution_time_seconds": total_time,
             }
 
             # Save summary to Firestore
             self.firebase.db.collection(backup_collection_name).document("backup_summary").set(summary)
 
-            logger.info(f"Complete collection backup finished in {total_time:.2f}s")
+            logger.info(f"Direct backup completed in {total_time:.2f}s")
             logger.info(f"Performance: {docs_per_second:.2f} docs/s")
-            logger.info(f"Results: {copied_docs} total documents copied, {failed_docs} failed")
+            logger.info(f"Results: {copied_main_docs} pools with {copied_subcoll_docs} context documents")
             logger.info(f"Backup collection: '{backup_collection_name}'")
 
             return failed_docs == 0
 
         except Exception as e:
-            logger.error(f"Error backing up collection: {str(e)}")
+            logger.error(f"Error during direct backup: {str(e)}")
             return False
 
     def run_cleanup(
