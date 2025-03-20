@@ -1,0 +1,97 @@
+2025-03-20 10:49:47,155 - FirebaseService - INFO - Environment variables loaded from .env.local
+2025-03-20 10:49:47,155 - src.utils.firebase_utils - WARNING - FIREBASE_KEY_FILE environment variable not set or invalid.
+2025-03-20 10:49:47,155 - src.utils.firebase_utils - WARNING - Looking for credential file in common locations.
+2025-03-20 10:49:47,155 - src.utils.firebase_utils - WARNING - NOTE: Storing credential files in your repo is a security risk!
+2025-03-20 10:49:47,155 - src.utils.firebase_utils - WARNING - Consider using environment variables instead.
+2025-03-20 10:49:47,155 - src.utils.firebase_utils - INFO - Found Firebase credential file at: credentials/firebase-credentials.json
+2025-03-20 10:49:47,155 - src.utils.firebase_utils - INFO - Using Firebase credentials from: credentials/firebase-credentials.json
+2025-03-20 10:49:47,200 - src.utils.firebase_utils - INFO - Firebase connection initialized successfully.
+2025-03-20 10:49:47,201 - FirebaseService - INFO - Firebase initialized successfully
+2025-03-20 10:49:47,201 - firebase_backup - INFO - Starting backup of marketContext to backup_marketContext_20250320_104947...
+2025-03-20 10:50:03,419 - firebase_backup - INFO - Found 4535 pools to backup
+2025-03-20 10:50:03,419 - firebase_backup - INFO - Processing batch 1/454: 10 pools
+2025-03-20 10:50:03,580 - firebase_backup - INFO - Accessing marketContexts for pool 12H7zN3gXRfUeu2fCQjooPAofbBL2wz7X7wKoS44oJkX
+2025-03-20 10:50:04,069 - firebase_backup - INFO - Found 1200 marketContexts documents for pool 12H7zN3gXRfUeu2fCQjooPAofbBL2wz7X7wKoS44oJkX
+2025-03-20 10:50:04,070 - firebase_backup - INFO - Processing batch 1/4 for pool 12H7zN3gXRfUeu2fCQjooPAofbBL2wz7X7wKoS44oJkX (300 documents)
+2025-03-20 10:50:10,849 - firebase_backup - INFO - Committed 300 context documents for pool 12H7zN3gXRfUeu2fCQjooPAofbBL2wz7X7wKoS44oJkX
+2025-03-20 10:50:10,955 - firebase_backup - INFO - Processing batch 2/4 for pool 12H7zN3gXRfUeu2fCQjooPAofbBL2wz7X7wKoS44oJkX (300 documents)
+2025-03-20 10:50:17,710 - firebase_backup - INFO - Committed 300 context documents for pool 12H7zN3gXRfUeu2fCQjooPAofbBL2wz7X7wKoS44oJkX
+2025-03-20 10:50:17,811 - firebase_backup - INFO - Processing batch 3/4 for pool 12H7zN3gXRfUeu2fCQjooPAofbBL2wz7X7wKoS44oJkX (300 documents)
+2025-03-20 10:50:23,341 - firebase_backup - INFO - Committed 300 context documents for pool 12H7zN3gXRfUeu2fCQjooPAofbBL2wz7X7wKoS44oJkX
+2025-03-20 10:50:23,442 - firebase_backup - INFO - Processing batch 4/4 for pool 12H7zN3gXRfUeu2fCQjooPAofbBL2wz7X7wKoS44oJkX (300 documents)
+2025-03-20 10:50:28,872 - firebase_backup - INFO - Committed 300 context documents for pool 12H7zN3gXRfUeu2fCQjooPAofbBL2wz7X7wKoS44oJkX
+2025-03-20 10:50:29,366 - firebase_backup - INFO - Accessing marketContexts for pool 12QspooeZFsA4d41KtLz4p3e8YyLzPxG4bShsUCBbEgU
+2025-03-20 10:50:29,720 - firebase_backup - INFO - Found 1138 marketContexts documents for pool 12QspooeZFsA4d41KtLz4p3e8YyLzPxG4bShsUCBbEgU
+2025-03-20 10:50:29,720 - firebase_backup - INFO - Processing batch 1/4 for pool 12QspooeZFsA4d41KtLz4p3e8YyLzPxG4bShsUCBbEgU (300 documents)
+2025-03-20 10:50:34,925 - firebase_backup - INFO - Committed 300 context documents for pool 12QspooeZFsA4d41KtLz4p3e8YyLzPxG4bShsUCBbEgU
+2025-03-20 10:50:35,026 - firebase_backup - INFO - Processing batch 2/4 for pool 12QspooeZFsA4d41KtLz4p3e8YyLzPxG4bShsUCBbEgU (300 documents)
+2025-03-20 10:50:39,232 - firebase_backup - INFO - Committed 300 context documents for pool 12QspooeZFsA4d41KtLz4p3e8YyLzPxG4bShsUCBbEgU
+2025-03-20 10:50:39,338 - firebase_backup - INFO - Processing batch 3/4 for pool 12QspooeZFsA4d41KtLz4p3e8YyLzPxG4bShsUCBbEgU (300 documents)
+2025-03-20 10:50:44,642 - firebase_backup - INFO - Committed 300 context documents for pool 12QspooeZFsA4d41KtLz4p3e8YyLzPxG4bShsUCBbEgU
+2025-03-20 10:50:44,747 - firebase_backup - INFO - Processing batch 4/4 for pool 12QspooeZFsA4d41KtLz4p3e8YyLzPxG4bShsUCBbEgU (238 documents)
+2025-03-20 10:50:48,634 - firebase_backup - INFO - Committed 238 context documents for pool 12QspooeZFsA4d41KtLz4p3e8YyLzPxG4bShsUCBbEgU
+2025-03-20 10:50:49,146 - firebase_backup - INFO - Accessing marketContexts for pool 12YyqbMeNdmdqh29k17zHF3MagzKuTDySKZwyUnwfzVx
+2025-03-20 10:50:49,456 - firebase_backup - INFO - Found 913 marketContexts documents for pool 12YyqbMeNdmdqh29k17zHF3MagzKuTDySKZwyUnwfzVx
+2025-03-20 10:50:49,456 - firebase_backup - INFO - Processing batch 1/4 for pool 12YyqbMeNdmdqh29k17zHF3MagzKuTDySKZwyUnwfzVx (300 documents)
+2025-03-20 10:50:54,370 - firebase_backup - INFO - Committed 300 context documents for pool 12YyqbMeNdmdqh29k17zHF3MagzKuTDySKZwyUnwfzVx
+2025-03-20 10:50:54,475 - firebase_backup - INFO - Processing batch 2/4 for pool 12YyqbMeNdmdqh29k17zHF3MagzKuTDySKZwyUnwfzVx (300 documents)
+2025-03-20 10:51:01,332 - firebase_backup - INFO - Committed 300 context documents for pool 12YyqbMeNdmdqh29k17zHF3MagzKuTDySKZwyUnwfzVx
+2025-03-20 10:51:01,437 - firebase_backup - INFO - Processing batch 3/4 for pool 12YyqbMeNdmdqh29k17zHF3MagzKuTDySKZwyUnwfzVx (300 documents)
+2025-03-20 10:51:07,783 - firebase_backup - INFO - Committed 300 context documents for pool 12YyqbMeNdmdqh29k17zHF3MagzKuTDySKZwyUnwfzVx
+2025-03-20 10:51:07,888 - firebase_backup - INFO - Processing batch 4/4 for pool 12YyqbMeNdmdqh29k17zHF3MagzKuTDySKZwyUnwfzVx (13 documents)
+2025-03-20 10:51:08,293 - firebase_backup - INFO - Committed 13 context documents for pool 12YyqbMeNdmdqh29k17zHF3MagzKuTDySKZwyUnwfzVx
+2025-03-20 10:51:08,591 - firebase_backup - INFO - Accessing marketContexts for pool 12ku9hUWjaWum6mrAL3KeY3N1RPva5GcmdYsLPP1Tut4
+2025-03-20 10:51:09,025 - firebase_backup - INFO - Found 1162 marketContexts documents for pool 12ku9hUWjaWum6mrAL3KeY3N1RPva5GcmdYsLPP1Tut4
+2025-03-20 10:51:09,025 - firebase_backup - INFO - Processing batch 1/4 for pool 12ku9hUWjaWum6mrAL3KeY3N1RPva5GcmdYsLPP1Tut4 (300 documents)
+2025-03-20 10:51:14,191 - firebase_backup - INFO - Committed 300 context documents for pool 12ku9hUWjaWum6mrAL3KeY3N1RPva5GcmdYsLPP1Tut4
+2025-03-20 10:51:14,293 - firebase_backup - INFO - Processing batch 2/4 for pool 12ku9hUWjaWum6mrAL3KeY3N1RPva5GcmdYsLPP1Tut4 (300 documents)
+2025-03-20 10:51:19,711 - firebase_backup - INFO - Committed 300 context documents for pool 12ku9hUWjaWum6mrAL3KeY3N1RPva5GcmdYsLPP1Tut4
+2025-03-20 10:51:19,813 - firebase_backup - INFO - Processing batch 3/4 for pool 12ku9hUWjaWum6mrAL3KeY3N1RPva5GcmdYsLPP1Tut4 (300 documents)
+2025-03-20 10:51:23,689 - firebase_backup - INFO - Committed 300 context documents for pool 12ku9hUWjaWum6mrAL3KeY3N1RPva5GcmdYsLPP1Tut4
+2025-03-20 10:51:23,794 - firebase_backup - INFO - Processing batch 4/4 for pool 12ku9hUWjaWum6mrAL3KeY3N1RPva5GcmdYsLPP1Tut4 (262 documents)
+2025-03-20 10:51:27,450 - firebase_backup - INFO - Committed 262 context documents for pool 12ku9hUWjaWum6mrAL3KeY3N1RPva5GcmdYsLPP1Tut4
+2025-03-20 10:51:28,064 - firebase_backup - INFO - Accessing marketContexts for pool 12qEkV2WvhpScGJgaqf75XUBibgWQG8j72YGb6dV5Ytr
+2025-03-20 10:51:28,258 - firebase_backup - INFO - Found 95 marketContexts documents for pool 12qEkV2WvhpScGJgaqf75XUBibgWQG8j72YGb6dV5Ytr
+2025-03-20 10:51:28,258 - firebase_backup - INFO - Processing batch 1/1 for pool 12qEkV2WvhpScGJgaqf75XUBibgWQG8j72YGb6dV5Ytr (95 documents)
+2025-03-20 10:51:29,803 - firebase_backup - INFO - Committed 95 context documents for pool 12qEkV2WvhpScGJgaqf75XUBibgWQG8j72YGb6dV5Ytr
+2025-03-20 10:51:30,083 - firebase_backup - INFO - Accessing marketContexts for pool 12qbvNxwtXahXwCumrne6qCikF9fMcrAyDmq2G9LQETY
+2025-03-20 10:51:30,453 - firebase_backup - INFO - Found 497 marketContexts documents for pool 12qbvNxwtXahXwCumrne6qCikF9fMcrAyDmq2G9LQETY
+2025-03-20 10:51:30,453 - firebase_backup - INFO - Processing batch 1/2 for pool 12qbvNxwtXahXwCumrne6qCikF9fMcrAyDmq2G9LQETY (300 documents)
+2025-03-20 10:51:34,958 - firebase_backup - INFO - Committed 300 context documents for pool 12qbvNxwtXahXwCumrne6qCikF9fMcrAyDmq2G9LQETY
+2025-03-20 10:51:35,063 - firebase_backup - INFO - Processing batch 2/2 for pool 12qbvNxwtXahXwCumrne6qCikF9fMcrAyDmq2G9LQETY (197 documents)
+2025-03-20 10:51:38,299 - firebase_backup - INFO - Committed 197 context documents for pool 12qbvNxwtXahXwCumrne6qCikF9fMcrAyDmq2G9LQETY
+2025-03-20 10:51:38,666 - firebase_backup - INFO - Accessing marketContexts for pool 13CBYnDE9H6dsVFqWiCKsEVTVUBPvAALC7ZrBUdrcHqm
+2025-03-20 10:51:39,023 - firebase_backup - INFO - Found 1016 marketContexts documents for pool 13CBYnDE9H6dsVFqWiCKsEVTVUBPvAALC7ZrBUdrcHqm
+2025-03-20 10:51:39,023 - firebase_backup - INFO - Processing batch 1/4 for pool 13CBYnDE9H6dsVFqWiCKsEVTVUBPvAALC7ZrBUdrcHqm (300 documents)
+2025-03-20 10:51:43,832 - firebase_backup - INFO - Committed 300 context documents for pool 13CBYnDE9H6dsVFqWiCKsEVTVUBPvAALC7ZrBUdrcHqm
+2025-03-20 10:51:43,938 - firebase_backup - INFO - Processing batch 2/4 for pool 13CBYnDE9H6dsVFqWiCKsEVTVUBPvAALC7ZrBUdrcHqm (300 documents)
+2025-03-20 10:51:49,696 - firebase_backup - INFO - Committed 300 context documents for pool 13CBYnDE9H6dsVFqWiCKsEVTVUBPvAALC7ZrBUdrcHqm
+2025-03-20 10:51:49,799 - firebase_backup - INFO - Processing batch 3/4 for pool 13CBYnDE9H6dsVFqWiCKsEVTVUBPvAALC7ZrBUdrcHqm (300 documents)
+2025-03-20 10:51:54,993 - firebase_backup - INFO - Committed 300 context documents for pool 13CBYnDE9H6dsVFqWiCKsEVTVUBPvAALC7ZrBUdrcHqm
+2025-03-20 10:51:55,095 - firebase_backup - INFO - Processing batch 4/4 for pool 13CBYnDE9H6dsVFqWiCKsEVTVUBPvAALC7ZrBUdrcHqm (116 documents)
+2025-03-20 10:51:57,865 - firebase_backup - INFO - Committed 116 context documents for pool 13CBYnDE9H6dsVFqWiCKsEVTVUBPvAALC7ZrBUdrcHqm
+2025-03-20 10:51:58,212 - firebase_backup - INFO - Accessing marketContexts for pool 13UufXw2zaq4ffE16dcYhsCc6ZdxXXV5EwNq4mRJuT8F
+2025-03-20 10:51:58,689 - firebase_backup - INFO - Found 1808 marketContexts documents for pool 13UufXw2zaq4ffE16dcYhsCc6ZdxXXV5EwNq4mRJuT8F
+2025-03-20 10:51:58,689 - firebase_backup - INFO - Processing batch 1/7 for pool 13UufXw2zaq4ffE16dcYhsCc6ZdxXXV5EwNq4mRJuT8F (300 documents)
+2025-03-20 10:52:03,911 - firebase_backup - INFO - Committed 300 context documents for pool 13UufXw2zaq4ffE16dcYhsCc6ZdxXXV5EwNq4mRJuT8F
+2025-03-20 10:52:04,016 - firebase_backup - INFO - Processing batch 2/7 for pool 13UufXw2zaq4ffE16dcYhsCc6ZdxXXV5EwNq4mRJuT8F (300 documents)
+2025-03-20 10:52:09,831 - firebase_backup - INFO - Committed 300 context documents for pool 13UufXw2zaq4ffE16dcYhsCc6ZdxXXV5EwNq4mRJuT8F
+2025-03-20 10:52:09,937 - firebase_backup - INFO - Processing batch 3/7 for pool 13UufXw2zaq4ffE16dcYhsCc6ZdxXXV5EwNq4mRJuT8F (300 documents)
+2025-03-20 10:52:15,149 - firebase_backup - INFO - Committed 300 context documents for pool 13UufXw2zaq4ffE16dcYhsCc6ZdxXXV5EwNq4mRJuT8F
+2025-03-20 10:52:15,255 - firebase_backup - INFO - Processing batch 4/7 for pool 13UufXw2zaq4ffE16dcYhsCc6ZdxXXV5EwNq4mRJuT8F (300 documents)
+2025-03-20 10:52:19,306 - firebase_backup - INFO - Committed 300 context documents for pool 13UufXw2zaq4ffE16dcYhsCc6ZdxXXV5EwNq4mRJuT8F
+2025-03-20 10:52:19,411 - firebase_backup - INFO - Processing batch 5/7 for pool 13UufXw2zaq4ffE16dcYhsCc6ZdxXXV5EwNq4mRJuT8F (300 documents)
+2025-03-20 10:52:24,176 - firebase_backup - INFO - Committed 300 context documents for pool 13UufXw2zaq4ffE16dcYhsCc6ZdxXXV5EwNq4mRJuT8F
+2025-03-20 10:52:24,280 - firebase_backup - INFO - Processing batch 6/7 for pool 13UufXw2zaq4ffE16dcYhsCc6ZdxXXV5EwNq4mRJuT8F (300 documents)
+2025-03-20 10:52:28,169 - firebase_backup - INFO - Committed 300 context documents for pool 13UufXw2zaq4ffE16dcYhsCc6ZdxXXV5EwNq4mRJuT8F
+2025-03-20 10:52:28,274 - firebase_backup - INFO - Processing batch 7/7 for pool 13UufXw2zaq4ffE16dcYhsCc6ZdxXXV5EwNq4mRJuT8F (8 documents)
+2025-03-20 10:52:28,780 - firebase_backup - INFO - Committed 8 context documents for pool 13UufXw2zaq4ffE16dcYhsCc6ZdxXXV5EwNq4mRJuT8F
+2025-03-20 10:52:29,056 - firebase_backup - INFO - Accessing marketContexts for pool 13gx6DyGyAJ84R7MC62Y7HaZJys7W2XRdcAECQGLbM8c
+2025-03-20 10:52:29,445 - firebase_backup - INFO - Found 1202 marketContexts documents for pool 13gx6DyGyAJ84R7MC62Y7HaZJys7W2XRdcAECQGLbM8c
+2025-03-20 10:52:29,445 - firebase_backup - INFO - Processing batch 1/5 for pool 13gx6DyGyAJ84R7MC62Y7HaZJys7W2XRdcAECQGLbM8c (300 documents)
+2025-03-20 10:52:34,007 - firebase_backup - INFO - Committed 300 context documents for pool 13gx6DyGyAJ84R7MC62Y7HaZJys7W2XRdcAECQGLbM8c
+2025-03-20 10:52:34,109 - firebase_backup - INFO - Processing batch 2/5 for pool 13gx6DyGyAJ84R7MC62Y7HaZJys7W2XRdcAECQGLbM8c (300 documents)
+2025-03-20 10:52:38,832 - firebase_backup - INFO - Committed 300 context documents for pool 13gx6DyGyAJ84R7MC62Y7HaZJys7W2XRdcAECQGLbM8c
+2025-03-20 10:52:38,937 - firebase_backup - INFO - Processing batch 3/5 for pool 13gx6DyGyAJ84R7MC62Y7HaZJys7W2XRdcAECQGLbM8c (300 documents)
+2025-03-20 10:52:45,477 - firebase_backup - INFO - Committed 300 context documents for pool 13gx6DyGyAJ84R7MC62Y7HaZJys7W2XRdcAECQGLbM8c
+2025-03-20 10:52:45,580 - firebase_backup - INFO - Processing batch 4/5 for pool 13gx6DyGyAJ84R7MC62Y7HaZJys7W2XRdcAECQGLbM8c (300 documents)
