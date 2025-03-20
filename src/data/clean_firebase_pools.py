@@ -10,6 +10,11 @@ Usage:
     python clean_firebase_pools.py --cleanup     # Run the cleanup operation
     python clean_firebase_pools.py --backup      # Only perform a backup
     python clean_firebase_pools.py --check-ref   # Check reference pools structure
+    python clean_firebase_pools.py --backup --firestore-backup  # Use faster Firestore-to-Firestore backup
+
+The --firestore-backup flag can be used with both --backup and --cleanup operations
+to create backups directly within Firestore instead of downloading data locally.
+This is significantly faster for large datasets.
 """
 
 import os
@@ -409,7 +414,119 @@ class FirebasePoolCleaner:
         logger.info(f"Deletion completed. {success_count} successful, {error_count} failed.")
         return success_count
 
-    def run_cleanup(self, analyze_only: bool = False, backup_only: bool = False, check_ref: bool = False) -> None:
+    def backup_pools_in_firestore(self, pool_ids: List[str], backup_collection_name: str = "backup_pools") -> bool:
+        """
+        Create a faster backup by copying pools directly within Firestore.
+        This is much faster than downloading data locally.
+
+        Args:
+            pool_ids: List of pool IDs to backup
+            backup_collection_name: Name of the collection to store backups in
+
+        Returns:
+            True if backup was successful, False otherwise
+        """
+        logger.info(f"Starting Firestore-to-Firestore backup of {len(pool_ids)} pools...")
+
+        # Add timestamp to backup collection name for versioning
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_collection_name = f"{backup_collection_name}_{timestamp}"
+
+        success_count = 0
+        error_count = 0
+
+        # Process pools in batches to avoid overloading Firebase
+        batch_size = 20
+        for i in range(0, len(pool_ids), batch_size):
+            pool_batch = pool_ids[i : i + batch_size]
+            logger.info(f"Backing up batch {i//batch_size + 1}: {len(pool_batch)} pools")
+
+            for pool_id in pool_batch:
+                try:
+                    # Get reference to the source pool document
+                    source_doc = self.firebase.db.collection("marketContext").document(pool_id)
+                    source_doc_data = source_doc.get()
+
+                    # Skip if source document doesn't exist
+                    if not source_doc_data.exists:
+                        logger.warning(f"Source pool {pool_id} doesn't exist, skipping backup")
+                        continue
+
+                    # Create the backup document with the same ID
+                    target_doc = self.firebase.db.collection(backup_collection_name).document(pool_id)
+
+                    # Copy main document data
+                    if source_doc_data.exists:
+                        target_doc.set(source_doc_data.to_dict() or {})
+
+                    # Get all documents from marketContexts subcollection
+                    contexts_collection = source_doc.collection("marketContexts")
+                    contexts = list(contexts_collection.stream())
+
+                    # Create a batch for efficient writing
+                    write_batch = self.firebase.db.batch()
+                    batch_count = 0
+                    batch_limit = 500  # Firestore limit for batch operations
+
+                    # Create the target subcollection
+                    for context in contexts:
+                        # Create reference to target document in subcollection
+                        target_context_doc = target_doc.collection("marketContexts").document(context.id)
+
+                        # Add to batch
+                        write_batch.set(target_context_doc, context.to_dict())
+                        batch_count += 1
+
+                        # If batch is full, commit it and create a new one
+                        if batch_count >= batch_limit:
+                            write_batch.commit()
+                            write_batch = self.firebase.db.batch()
+                            batch_count = 0
+
+                    # Commit any remaining operations in the batch
+                    if batch_count > 0:
+                        write_batch.commit()
+
+                    logger.info(
+                        f"Successfully backed up pool {pool_id} with {len(contexts)} data points to {backup_collection_name}"
+                    )
+                    success_count += 1
+
+                except Exception as e:
+                    logger.error(f"Error backing up pool {pool_id} to Firestore: {e}")
+                    error_count += 1
+
+            # Small delay between batches to avoid overloading Firebase
+            time.sleep(1)
+
+        # Save summary information about the backup
+        summary = {
+            "timestamp": datetime.now().isoformat(),
+            "total_pools": len(pool_ids),
+            "successful_backups": success_count,
+            "failed_backups": error_count,
+            "pool_ids": pool_ids,
+        }
+
+        # Save summary to Firestore
+        try:
+            self.firebase.db.collection(backup_collection_name).document("backup_summary").set(summary)
+            logger.info(f"Backup summary saved to {backup_collection_name}/backup_summary")
+        except Exception as e:
+            logger.error(f"Error saving backup summary: {e}")
+
+        logger.info(
+            f"Firestore backup completed to collection '{backup_collection_name}'. {success_count} successful, {error_count} failed."
+        )
+        return error_count == 0
+
+    def run_cleanup(
+        self,
+        analyze_only: bool = False,
+        backup_only: bool = False,
+        check_ref: bool = False,
+        firestore_backup: bool = False,
+    ) -> None:
         """
         Run the full cleanup process.
 
@@ -417,6 +534,7 @@ class FirebasePoolCleaner:
             analyze_only: If True, only analyze but don't delete
             backup_only: If True, only backup all pools without deletion
             check_ref: If True, only analyze reference pools
+            firestore_backup: If True, use faster Firestore-to-Firestore backup
         """
         try:
             # If check_ref flag is set, only analyze reference pools
@@ -460,14 +578,28 @@ class FirebasePoolCleaner:
             if backup_only:
                 all_pools = list(pools_counts.keys())
                 logger.info(f"Backing up all {len(all_pools)} pools...")
-                self.backup_pools(all_pools)
+
+                if firestore_backup:
+                    # Use faster Firestore-to-Firestore backup
+                    self.backup_pools_in_firestore(all_pools)
+                else:
+                    # Use standard local backup
+                    self.backup_pools(all_pools)
                 return
 
             # Otherwise, continue with backup and deletion
 
             # Backup pools to be deleted
             logger.info(f"Backing up {len(pools_to_delete)} pools before deletion...")
-            backup_success = self.backup_pools(pools_to_delete)
+
+            if firestore_backup:
+                # Use faster Firestore-to-Firestore backup for pools to be deleted
+                backup_success = self.backup_pools_in_firestore(
+                    pools_to_delete, backup_collection_name="deletion_backup_pools"
+                )
+            else:
+                # Use standard local backup
+                backup_success = self.backup_pools(pools_to_delete)
 
             if not backup_success:
                 logger.warning("Backup had errors. Aborting deletion to be safe.")
@@ -495,6 +627,11 @@ def main():
     parser.add_argument("--cleanup", action="store_true", help="Run the cleanup operation")
     parser.add_argument("--backup", action="store_true", help="Only perform a backup of all pools")
     parser.add_argument("--check-ref", action="store_true", help="Check reference pools structure")
+    parser.add_argument(
+        "--firestore-backup",
+        action="store_true",
+        help="Use faster Firestore-to-Firestore backup (much faster than local backup)",
+    )
     parser.add_argument("--credential-path", help="Path to Firebase credentials JSON file")
 
     args = parser.parse_args()
@@ -511,9 +648,9 @@ def main():
     elif args.analyze:
         cleaner.run_cleanup(analyze_only=True)
     elif args.backup:
-        cleaner.run_cleanup(backup_only=True)
+        cleaner.run_cleanup(backup_only=True, firestore_backup=args.firestore_backup)
     elif args.cleanup:
-        cleaner.run_cleanup()
+        cleaner.run_cleanup(firestore_backup=args.firestore_backup)
 
 
 if __name__ == "__main__":
