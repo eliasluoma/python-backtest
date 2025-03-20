@@ -11,10 +11,13 @@ Usage:
     python clean_firebase_pools.py --backup      # Only perform a backup
     python clean_firebase_pools.py --check-ref   # Check reference pools structure
     python clean_firebase_pools.py --backup --firestore-backup  # Use faster Firestore-to-Firestore backup
+    python clean_firebase_pools.py --backup-collection  # Backup entire collection at once (fastest)
 
 The --firestore-backup flag can be used with both --backup and --cleanup operations
 to create backups directly within Firestore instead of downloading data locally.
-This is significantly faster for large datasets.
+
+The --backup-collection option is the fastest way to backup all data since it copies
+the entire collection at once instead of processing pools individually.
 """
 
 import os
@@ -554,6 +557,151 @@ class FirebasePoolCleaner:
 
         return error_count == 0
 
+    def backup_entire_collection(
+        self, collection_name: str = "marketContext", backup_collection_name: str = "backup_marketContext"
+    ) -> bool:
+        """
+        Create a backup of an entire collection by copying all documents and subcollections at once.
+        This is much faster than copying individual pools.
+
+        Args:
+            collection_name: Name of the collection to backup (default: "marketContext")
+            backup_collection_name: Name of the backup collection (a timestamp will be appended)
+
+        Returns:
+            True if backup was successful, False otherwise
+        """
+        # Add timestamp to backup collection name for versioning
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_collection_name = f"{backup_collection_name}_{timestamp}"
+
+        logger.info(f"Starting backup of entire {collection_name} collection to {backup_collection_name}...")
+        start_time = time.time()
+
+        try:
+            # Get source collection reference
+            source_collection = self.firebase.db.collection(collection_name)
+
+            # Get all documents in the collection
+            all_docs = list(source_collection.stream())
+            logger.info(f"Found {len(all_docs)} documents in {collection_name} collection")
+
+            # Statistics tracking
+            copied_docs = 0
+            copied_subcollection_docs = 0
+            failed_docs = 0
+
+            # Process in batches
+            batch_size = 100  # Process more documents at once for speed
+            for i in range(0, len(all_docs), batch_size):
+                batch_start_time = time.time()
+                current_batch = all_docs[i : i + batch_size]
+                logger.info(
+                    f"Processing batch {i//batch_size + 1}/{(len(all_docs)-1)//batch_size + 1}: {len(current_batch)} documents"
+                )
+
+                batch_copied_docs = 0
+                batch_copied_subcollection_docs = 0
+
+                for doc in current_batch:
+                    try:
+                        # Create target document reference
+                        source_doc_ref = source_collection.document(doc.id)
+                        target_doc_ref = self.firebase.db.collection(backup_collection_name).document(doc.id)
+
+                        # Copy main document data
+                        target_doc_ref.set(doc.to_dict() or {})
+                        batch_copied_docs += 1
+
+                        # Get all subcollections for this document
+                        subcollections = source_doc_ref.collections()
+
+                        # Copy each subcollection
+                        for subcoll in subcollections:
+                            subcoll_docs = list(subcoll.stream())
+
+                            # Use batched writes for subcollection documents
+                            if subcoll_docs:
+                                logger.info(
+                                    f"Copying {len(subcoll_docs)} documents from {doc.id}/{subcoll.id} subcollection"
+                                )
+
+                                # Process subcollection documents in batches
+                                write_batch = self.firebase.db.batch()
+                                batch_count = 0
+                                batch_limit = 500  # Firestore limit
+
+                                for subdoc in subcoll_docs:
+                                    target_subdoc_ref = target_doc_ref.collection(subcoll.id).document(subdoc.id)
+                                    write_batch.set(target_subdoc_ref, subdoc.to_dict())
+                                    batch_count += 1
+                                    batch_copied_subcollection_docs += 1
+
+                                    if batch_count >= batch_limit:
+                                        write_batch.commit()
+                                        write_batch = self.firebase.db.batch()
+                                        batch_count = 0
+
+                                # Commit any remaining documents
+                                if batch_count > 0:
+                                    write_batch.commit()
+
+                    except Exception as e:
+                        logger.error(f"Error copying document {doc.id}: {str(e)}")
+                        failed_docs += 1
+
+                # Update totals
+                copied_docs += batch_copied_docs
+                copied_subcollection_docs += batch_copied_subcollection_docs
+
+                # Log batch performance
+                batch_time = time.time() - batch_start_time
+                docs_per_second = (
+                    (batch_copied_docs + batch_copied_subcollection_docs) / batch_time if batch_time > 0 else 0
+                )
+                logger.info(f"Batch completed in {batch_time:.2f}s ({docs_per_second:.2f} docs/s)")
+
+                # Progress update
+                elapsed = time.time() - start_time
+                progress = (i + len(current_batch)) / len(all_docs)
+                estimated_total = elapsed / progress if progress > 0 else 0
+                remaining = estimated_total - elapsed
+
+                logger.info(
+                    f"Progress: {progress:.1%} - Documents: {copied_docs}/{len(all_docs)} - "
+                    + f"Time: {elapsed:.1f}s elapsed, ~{remaining:.1f}s remaining"
+                )
+
+            # Save summary
+            total_time = time.time() - start_time
+            docs_per_second = (copied_docs + copied_subcollection_docs) / total_time if total_time > 0 else 0
+
+            summary = {
+                "timestamp": datetime.now().isoformat(),
+                "source_collection": collection_name,
+                "total_documents": len(all_docs),
+                "copied_documents": copied_docs,
+                "copied_subcollection_documents": copied_subcollection_docs,
+                "failed_documents": failed_docs,
+                "execution_time_seconds": total_time,
+            }
+
+            # Save summary to Firestore
+            self.firebase.db.collection(backup_collection_name).document("backup_summary").set(summary)
+
+            logger.info(f"Collection backup completed in {total_time:.2f}s")
+            logger.info(f"Performance: {docs_per_second:.2f} docs/s")
+            logger.info(
+                f"Results: {copied_docs} documents copied with {copied_subcollection_docs} subcollection documents"
+            )
+            logger.info(f"Backup collection: '{backup_collection_name}'")
+
+            return failed_docs == 0
+
+        except Exception as e:
+            logger.error(f"Error backing up collection: {str(e)}")
+            return False
+
     def run_cleanup(
         self,
         analyze_only: bool = False,
@@ -676,17 +824,32 @@ def main():
         action="store_true",
         help="Use faster Firestore-to-Firestore backup (much faster than local backup)",
     )
+    parser.add_argument(
+        "--backup-collection",
+        action="store_true",
+        help="Backup the entire marketContext collection at once (fastest option)",
+    )
+    parser.add_argument(
+        "--collection-name", default="marketContext", help="Name of the collection to backup (default: marketContext)"
+    )
     parser.add_argument("--credential-path", help="Path to Firebase credentials JSON file")
 
     args = parser.parse_args()
 
     # If no arguments provided, default to analyze mode
-    if not (args.analyze or args.cleanup or args.backup or args.check_ref):
+    if not (args.analyze or args.cleanup or args.backup or args.check_ref or args.backup_collection):
         args.analyze = True
         logger.info("No mode specified, defaulting to analyze-only mode")
 
     cleaner = FirebasePoolCleaner(credential_path=args.credential_path)
 
+    # Handle backup of entire collection
+    if args.backup_collection:
+        logger.info("Running backup of entire collection...")
+        cleaner.backup_entire_collection(collection_name=args.collection_name)
+        return
+
+    # Handle other modes
     if args.check_ref:
         cleaner.run_cleanup(check_ref=True)
     elif args.analyze:
