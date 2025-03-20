@@ -542,6 +542,16 @@ class FirebasePoolCleaner:
                 self.analyze_reference_pools()
                 return
 
+            # For backup-only with Firestore backup, we can skip the analysis phase entirely
+            if backup_only and firestore_backup:
+                logger.info("Starting fast Firestore-to-Firestore backup (skipping analysis phase)...")
+                # Get all available pools directly
+                all_pools = self.firebase.get_available_pools(limit=None)
+                logger.info(f"Found {len(all_pools)} pools in Firebase, starting direct backup...")
+                # Use faster Firestore-to-Firestore backup
+                self.backup_pools_in_firestore(all_pools)
+                return
+
             # Get analysis data
             pools_counts, low_data_pools, no_volume_pools, pools_to_keep = self.analyze_pools()
 
