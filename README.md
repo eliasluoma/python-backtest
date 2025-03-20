@@ -9,6 +9,58 @@ This project is a backtesting framework for Solana trading strategies. It can fe
 - **Backtesting**: Test trading strategies on historical data.
 - **Visualization**: Generate charts and metrics for market analysis.
 
+## Getting Started
+
+### Installation
+
+1. Clone the repository
+```bash
+git clone https://github.com/yourusername/solana-trading-simulator.git
+cd solana-trading-simulator
+```
+
+2. Set up a virtual environment
+```bash
+# Using virtualenv
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Or using pipenv
+pipenv install
+pipenv shell
+```
+
+3. Install dependencies
+```bash
+pip install -r requirements.txt
+```
+
+4. Set up Firebase credentials
+Create a `.env.local` file with your Firebase configuration or set the `FIREBASE_KEY_FILE` environment variable.
+
+### Usage
+
+The Solana Trading Simulator provides a unified command-line interface for all functionality:
+
+```bash
+# Show all available commands
+python main.py --help
+
+# Run a simulation
+python main.py simulate --max-pools 20
+
+# Import pools to the local cache
+python main.py cache import --limit 10
+
+# Check cache status
+python main.py cache status
+
+# Get help for a specific command
+python main.py cache --help
+```
+
+For detailed usage instructions, see the [CLI Guide](docs/cli_guide.md).
+
 ## Setup
 
 ### Prerequisites
@@ -16,35 +68,6 @@ This project is a backtesting framework for Solana trading strategies. It can fe
 - Python 3.8+
 - pip
 - Firebase account with Firestore database
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/solana-trading-simulator.git
-   cd solana-trading-simulator
-   ```
-
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Set up Firebase credentials:
-   
-   **IMPORTANT: Never commit credential files to your repository!**
-   
-   The recommended way to set up Firebase credentials is through environment variables:
-   ```bash
-   export FIREBASE_KEY_FILE=/path/to/your/firebase-credentials.json
-   ```
-   
-   Alternatively, you can store the credentials file in one of these secure locations:
-   - `credentials/firebase-credentials.json` (create a credentials directory that is git-ignored)
-   - `~/.config/firebase-credentials.json` (user config directory)
-   - `/etc/firebase-credentials.json` (system-wide location)
-   
-   Make sure to add any credential files to `.gitignore` to prevent accidentally committing them.
 
 ### Configuration
 
@@ -56,6 +79,114 @@ MAX_POOLS=10
 ```
 
 ## Usage
+
+### Unified Command Line Interface
+
+The Solana Trading Simulator provides a unified command-line interface for all functionality:
+
+```bash
+./solana_simulator.py [command] [options]
+```
+
+Or alternatively:
+
+```bash
+python solana_simulator.py [command] [options]
+```
+
+The following commands are available:
+
+#### Simulate Trading Strategies
+
+```bash
+./solana_simulator.py simulate [options]
+```
+
+Options:
+- **Data Parameters**:
+  - `--credentials`: Firebase credentials JSON file
+  - `--env-file`: Path to .env file (default: .env.local)
+  - `--max-pools`: Maximum number of pools to analyze (default: 10)
+  - `--min-data-points`: Minimum data points required per pool (default: 100)
+  
+- **Buy Parameters**:
+  - `--early-mc-limit`: Market cap threshold for early filtering (default: 400000)
+  - `--min-delay`: Minimum delay in seconds (default: 60)
+  - `--max-delay`: Maximum delay in seconds (default: 200)
+  - `--mc-change-5s`: Market cap change 5s threshold (default: 5.0)
+  - `--holder-delta-30s`: Holder delta 30s threshold (default: 20)
+  - `--buy-volume-5s`: Buy volume 5s threshold (default: 5.0)
+  
+- **Sell Parameters**:
+  - `--take-profit`: Take profit multiplier (default: 1.9)
+  - `--stop-loss`: Stop loss multiplier (default: 0.65)
+  - `--trailing-stop`: Trailing stop multiplier (default: 0.9)
+  - `--skip-sell`: Skip sell simulation (flag)
+
+#### Analyze Market Data
+
+```bash
+./solana_simulator.py analyze [subcommand] [options]
+```
+
+Subcommands:
+- `all`: Analyze all pools
+  ```bash
+  ./solana_simulator.py analyze all [options]
+  ```
+  
+- `invalid`: Analyze invalid pools
+  ```bash
+  ./solana_simulator.py analyze invalid --input invalid_pools.json [options]
+  ```
+  Options:
+  - `--input`, `-i`: Path to JSON file containing invalid pool IDs
+  - `--output`, `-o`: Path to save the analysis results
+  - `--max-pools`, `-m`: Maximum number of pools to analyze
+  - `--limit-per-pool`, `-l`: Maximum number of data points per pool
+
+#### Export Pool Data
+
+```bash
+./solana_simulator.py export --input pools.json [options]
+```
+
+Options:
+- `--input`, `-i`: Path to JSON file containing pool IDs (required)
+- `--output-dir`, `-o`: Directory to save the exported data
+- `--max-rows`, `-m`: Maximum number of rows to export per pool
+- `--format`, `-f`: Output format (json or csv)
+
+#### Visualize Data
+
+```bash
+./solana_simulator.py visualize [subcommand] [options]
+```
+
+Subcommands:
+- `market`: Visualize market data
+  ```bash
+  ./solana_simulator.py visualize market --input data.json [options]
+  ```
+  
+- `results`: Visualize simulation results
+  ```bash
+  ./solana_simulator.py visualize results --input results.json [options]
+  ```
+  
+- `compare`: Compare different strategies
+  ```bash
+  ./solana_simulator.py visualize compare --input results1.json results2.json [options]
+  ```
+
+### Common Options
+
+These options are available for all commands:
+
+- `--verbose`, `-v`: Increase verbosity (can be used multiple times)
+- `--quiet`, `-q`: Suppress non-error messages
+- `--output-dir`: Directory to save output files (default: outputs)
+- `--version`: Show version information
 
 ### Fetching Data from Firebase
 
@@ -79,6 +210,58 @@ pool_data = firebase_service.fetch_market_data(pool_address=pool_address)
 # Fetch recent market data (last 24 hours)
 recent_data = firebase_service.fetch_recent_market_data(hours_back=24)
 ```
+
+### Pool Analysis Tools
+
+The project includes several analysis tools for examining trading pools:
+
+#### Analyzing All Pools
+
+This tool analyzes all pools in Firebase and produces a comprehensive report:
+
+```bash
+python -m src.analysis.cli analyze-all
+```
+
+The report includes:
+- How many pools have all required fields
+- How many pools have at least 600 rows (approx. 10 min of data)
+- How many pools have at least 1100 rows (approx. 18 min of data)
+- Analysis of missing fields (which fields are missing and how often)
+- Analysis of naming conventions (snake_case vs. camelCase)
+
+Analysis results are saved in the `outputs` directory.
+
+#### Analyzing Invalid Pools
+
+This tool performs detailed analysis of pools identified as invalid:
+
+```bash
+python -m src.analysis.cli analyze-invalid --input outputs/invalid_pools.json
+```
+
+Parameters:
+- `--input`: Path to JSON file containing invalid pool IDs
+- `--output`: Path to save the analysis results
+- `--max-pools`: Maximum number of pools to analyze
+- `--limit-per-pool`: Maximum number of data points to fetch per pool
+
+The analysis identifies specific issues with each pool and produces statistics on common problems.
+
+#### Exporting Pool Data
+
+This tool exports data from specified pools to JSON files:
+
+```bash
+python -m src.analysis.cli export --input outputs/valid_pools.json
+```
+
+Parameters:
+- `--input`: Path to JSON file containing pool IDs (required)
+- `--output-dir`: Directory to save the exported data
+- `--max-rows`: Maximum number of rows to export per pool
+
+Each pool's data is saved as a separate JSON file with metadata.
 
 ### Analyzing Market Data
 

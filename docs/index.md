@@ -2,19 +2,38 @@
 
 A backtesting framework for Solana token trading strategies using market data from Firebase.
 
+## Command-Line Interface
+
+The project provides a unified command-line interface for all functionality:
+
+```bash
+./solana_simulator.py [command] [options]
+```
+
+Available commands:
+- `simulate`: Run a trading simulation
+- `analyze`: Analyze market data
+- `export`: Export pool data to JSON files
+- `visualize`: Generate visualizations from data
+- `cache`: Manage the SQLite cache for pool data
+
+For detailed documentation of all commands and options, see the [CLI Guide](cli_guide.md).
+
 ## Project Structure
 
 ```
 python-backtest/
-├── legacy/                  # Legacy scripts (for reference)
-├── scripts/                 # Executable scripts
-│   ├── run_simulation.py    # Main simulation script
-│   └── test_sell_simulation.py # Sell strategy test script
+├── solana_simulator.py      # Main CLI entry point
 ├── src/                     # Source code
+│   ├── cli/                 # CLI implementation
+│   │   ├── commands/        # Command modules
+│   │   └── main.py          # CLI main module
 │   ├── config/              # Configuration settings
 │   ├── data/                # Data services
 │   │   ├── data_processor.py
-│   │   └── firebase_service.py
+│   │   ├── firebase_service.py
+│   │   ├── cache_service.py # SQLite caching service
+│   │   └── schema.sql       # SQLite database schema
 │   ├── simulation/          # Simulation modules
 │   │   ├── buy_simulator.py
 │   │   └── sell_simulator.py
@@ -25,7 +44,10 @@ python-backtest/
 │   ├── simulation/          # Simulator tests
 │   └── run_all_tests.py     # Test runner
 ├── docs/                    # Documentation
-└── fetch_firebase_data.py   # Data retrieval script
+├── scripts/                 # Legacy scripts (for reference)
+│   ├── run_simulation.py    # Legacy simulation script
+│   └── test_sell_simulation.py # Sell strategy test script
+└── legacy/                  # Legacy code (for reference)
 ```
 
 ## Features
@@ -33,6 +55,8 @@ python-backtest/
 - Buy strategy simulation based on market metrics
 - Sell strategy simulation with configurable take-profit and stop-loss
 - Firebase integration for retrieving market data
+- SQLite-based caching system for efficient data access
+- Cross-language compatibility with TypeScript applications
 - Comprehensive test suite
 - Custom market data visualization
 
@@ -42,6 +66,7 @@ python-backtest/
 
 - Python 3.8+
 - Firebase credentials (JSON key file)
+- SQLite (included in Python standard library)
 
 ### Installation
 
@@ -81,6 +106,22 @@ python scripts/run_simulation.py --credentials firebase-key.json --max-pools 5
 # Customize sell strategy parameters
 python scripts/run_simulation.py --credentials firebase-key.json --take-profit 2.0 --stop-loss 0.7 --trailing-stop 0.85
 ```
+
+### Managing the Cache
+
+Update the cache with latest pool data:
+
+```bash
+python -m src.cli cache update --all
+```
+
+Check cache status:
+
+```bash
+python -m src.cli cache status
+```
+
+See the [Cache Guide](cache_guide.md) for more details on the caching system.
 
 ### Running Tests
 

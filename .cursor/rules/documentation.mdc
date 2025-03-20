@@ -1,0 +1,76 @@
+---
+description: Documentation Guidelines for Solana Trading Simulator
+globs: "**/*.md,**/*.rst,**/docs/**/*"
+---
+# Documentation Guidelines
+
+## Description
+This rule provides standards for creating and maintaining documentation for the Solana Trading Simulator project. Follow these guidelines to ensure comprehensive, accurate, and user-friendly documentation.
+
+## Patterns
+- **/*.md
+- **/*.rst
+- **/docs/**/*
+
+## General Documentation Principles
+- Keep documentation current and accurate
+- Document all major components and features
+- Use clear, concise language
+- Include code examples where appropriate
+- Provide both high-level overviews and detailed guidance
+- Update documentation when code changes
+
+## Project Documentation Structure
+- Follow the established documentation structure:
+  - docs/README.md: Documentation overview and table of contents
+  - docs/index.md: Complete user guide
+  - docs/firebase_*.md: Firebase setup and data schema
+  - docs/simulation_guide.md: Guide for running simulations
+  - docs/buy_simulator.md & docs/sell_simulator.md: Strategy documentation
+
+## Component Documentation
+- Document the purpose and functionality of each component
+- Include parameter descriptions and default values
+- Explain trading strategy logic in detail
+- Document Firebase integration thoroughly
+- Include examples of component usage
+
+## Code Examples
+- Provide well-commented code examples
+- Show complete, working examples
+- Include example outputs where appropriate
+- Reference examples from the examples/ directory
+- Explain parameter choices in examples
+
+## Command Line Interface Documentation
+- Document all CLI commands and parameters
+- Include example command lines for common tasks
+- Document command output formats
+- Explain error messages and troubleshooting
+
+## Firebase Documentation
+- Maintain accurate Firebase data schema documentation
+- Document collection and field structures
+- Include field types and descriptions
+- Document data validation and processing requirements
+- Explain common challenges and solutions
+
+## Strategy Documentation
+- Explain the logic behind trading strategies
+- Document entry and exit conditions
+- Explain parameter impact on strategy performance
+- Include backtest results for different parameter sets
+- Document strategy limitations and assumptions
+
+## Visualization Documentation
+- Document chart creation and interpretation
+- Explain metrics and calculations
+- Provide sample visualization outputs
+- Document color schemes and annotations
+
+## Troubleshooting Documentation
+- Include common issues and solutions
+- Document error messages and their meaning
+- Provide guidance for debugging
+- Include FAQ sections for common questions
+- Document known limitations

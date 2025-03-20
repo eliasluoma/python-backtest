@@ -50,6 +50,12 @@ Thumbs.db
 logs/
 log/
 .mypy_cache/
+firebase_backup/
+
+# Database files
+cache/*.db
+cache/*.sqlite
+cache/*.sqlite3
 
 # Credentials and secrets - NEVER commit these!
 firebase-key.json

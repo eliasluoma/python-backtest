@@ -1,0 +1,73 @@
+---
+description: Planning and designing code changes for Solana Trading Simulator
+globs: "**/docs/design/**/*.md,**/docs/planning/**/*.md"
+---
+# Planning Guidelines
+
+## Description
+This rule provides standards for planning and designing code changes for the Solana Trading Simulator project. Apply these guidelines before implementation to ensure well-thought-out solutions that align with project goals.
+
+## Patterns
+- **/docs/design/**/*.md
+- **/docs/planning/**/*.md
+
+## General Planning Principles
+- Always plan first before making any changes to the simulator
+- Think through trading strategy implications thoroughly before coding
+- Break down complex simulation tasks into smaller, manageable steps
+- Consider the big picture and how changes fit into the overall backtesting framework
+
+## Problem Analysis
+- Understand the requirements for trading strategy enhancements completely
+- Identify potential edge cases in market data and simulation
+- Consider security implications, especially for Firebase access
+- Evaluate performance considerations for data processing and simulations
+
+## Design Approach
+- Sketch out the solution architecture before implementation
+- Consider alternative approaches to trading strategies
+- Choose the simplest solution that meets the requirements
+- Document design decisions and rationale, especially for parameter choices
+
+## Implementation Planning
+- Create a step-by-step plan for implementation
+- Identify which files need to be modified:
+  - src/data/ for data handling changes
+  - src/simulation/ for simulation logic
+  - src/analysis/ for analysis and reporting
+- Determine what new components need to be created
+- List dependencies that need to be added or updated
+
+## Strategy Planning
+- Document the reasoning behind trading strategy parameters
+- Consider both entry (buy) and exit (sell) conditions
+- Plan for different market conditions and edge cases
+- Define success metrics for strategies
+- Consider risk management aspects
+
+## Task Breakdown
+- Break large tasks into smaller, more manageable subtasks
+- Estimate time requirements for each subtask
+- Identify potential roadblocks or challenges
+- Prioritize subtasks based on dependencies and importance
+
+## Data Processing Planning
+- Plan efficient data processing pipelines
+- Consider data validation and cleaning steps
+- Plan for handling inconsistent field names in Firebase data
+- Design appropriate data structures for simulations
+- Consider timestamp handling and time-series operations
+
+## Simulation Parameter Planning
+- Document the purpose of each simulation parameter
+- Plan for parameter validation and error handling
+- Consider sensible default values
+- Plan for testing different parameter combinations
+- Document expected parameter ranges and impact on results
+
+## Output and Visualization Planning
+- Plan output formats for simulation results
+- Design visualization approaches for strategy analysis
+- Consider both summary statistics and detailed results
+- Plan for storing and comparing multiple simulation runs
+- Design clear and informative visualizations

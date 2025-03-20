@@ -1,0 +1,73 @@
+---
+description: Data handling, Firebase integration, and security practices for Solana Trading Simulator
+globs: "**/data/**/*.py,**/firebase_service.py,**/*firebase*.py,**/utils/firebase_utils.py,credentials/firebase*.json"
+---
+# Data Handling Guidelines
+
+## Description
+This rule provides standards for data handling, Firebase integration, and security practices for the Solana Trading Simulator project. Apply these guidelines when working with market data, pool information, and Firebase integration.
+
+## Patterns
+- **/data/**/*.py
+- **/firebase_service.py
+- **/*firebase*.py
+- **/utils/firebase_utils.py
+- credentials/firebase*.json
+
+## Firebase Integration
+- Use FirebaseService class for all Firebase interactions
+- Follow Firebase best practices as outlined in docs/firebase_setup.md
+- Implement proper error handling for Firebase operations
+- Cache market data appropriately to minimize read operations
+- Respect the Firebase data schema as documented in docs/firebase_data_schema.md
+
+## Security
+- Never hardcode Firebase credentials
+- Never commit credential files to the repository
+- Store Firebase credentials securely in one of these locations:
+  - Path specified by FIREBASE_KEY_FILE environment variable
+  - credentials/firebase-credentials.json (git-ignored)
+  - ~/.config/firebase-credentials.json
+  - /etc/firebase-credentials.json
+- Add credential files to .gitignore
+
+## Data Validation
+- Validate all market data before processing
+- Check for required fields in pool data
+- Handle missing or inconsistent field names (snake_case vs. camelCase)
+- Implement proper error handling for validation failures
+- Document data validation requirements
+
+## Data Structure
+- Follow the established Firebase data schema
+- Pool data is stored in the marketContext collection
+- Time-series data is stored in the marketContexts subcollection
+- Respect the field naming conventions
+- Properly convert Firestore Timestamps to Python datetime objects
+
+## Error Handling
+- Implement comprehensive error handling for all Firebase operations
+- Provide meaningful error messages
+- Log errors with appropriate context
+- Implement retry logic for transient Firebase failures
+- Fall back gracefully when data is unavailable
+
+## Performance
+- Optimize Firebase queries for performance
+- Limit the number of documents fetched
+- Use query parameters like limit_per_pool appropriately
+- Implement efficient data processing pipelines
+- Consider batching operations where appropriate
+
+## Data Processing
+- Use pandas DataFrames for data processing
+- Properly handle timestamp conversions
+- Normalize field names when necessary
+- Calculate required metrics efficiently
+- Filter invalid or insufficient data early in the process
+
+## Testing
+- Create test doubles for Firebase operations in unit tests
+- Use sample data files for testing
+- Test both successful operations and error conditions
+- Test with a variety of pool data formats

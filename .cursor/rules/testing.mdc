@@ -1,0 +1,77 @@
+---
+description: Testing practices, organization, and coverage requirements for Solana Trading Simulator
+globs: "**/test_*.py,**/tests/**/*.py,tests/run_all_tests.py,conftest.py"
+alwaysApply: false
+---
+# Testing Guidelines
+
+## Description
+This rule provides standards for testing practices, organization, and coverage for the Solana Trading Simulator project. Apply these guidelines when writing or modifying tests to ensure high-quality test coverage and reliable test results.
+
+## Patterns
+- **/test_*.py
+- **/tests/**/*.py
+- tests/run_all_tests.py
+- conftest.py
+
+## General Testing Principles
+- Write tests for all new features or changes to simulation logic
+- Ensure new or modified trading strategies have comprehensive test coverage
+- Run tests before committing changes to verify functionality
+- Test edge cases and error conditions, not just the happy path
+- Focus on testing critical components like trade entry/exit points
+
+## Test Organization
+- Follow the project's test organization and naming conventions
+- Group tests by component (data, simulation, analysis)
+- Name test files with `test_` prefix (e.g., `test_firebase_service.py`)
+- Name test functions with `test_` prefix (e.g., `test_buy_opportunity()`)
+
+## Test Coverage
+- Aim for high test coverage of core simulation components
+- Focus on testing complex logic in buy and sell strategies
+- Test Firebase integration with mock data
+- Include unit tests for utility functions and simulation components
+- Test market data processing and analysis functions
+
+## Test Quality
+- Tests should be independent and isolated
+- Avoid test interdependence
+- Use fixtures for sample market data
+- Mock Firebase calls to avoid external dependencies
+- Clean up after tests (e.g., close connections, delete test data)
+
+## Test Data
+- Create realistic sample market data for testing
+- Include test data that covers various market conditions
+- Test with both valid and invalid pool data
+- Include edge cases (e.g., very high volatility, missing fields)
+- Use consistent test data formats
+
+## Running Tests
+- Run test suite locally before pushing changes
+- Run all tests with: `python tests/run_all_tests.py`
+- Test specific modules with: `python -m unittest tests/data/test_firebase_service.py`
+- Use verbose mode for detailed output: `python -m unittest -v tests/data/test_firebase_service.py`
+
+## Testing Simulations
+- Test both buy simulator and sell simulator components
+- Verify that simulation parameters are correctly applied
+- Test with realistic market data scenarios
+- Validate simulation results against expected outcomes
+- Test performance with varying parameter settings
+
+## Testing Firebase Integration
+- Mock Firebase connections for unit tests
+- Test error handling for Firebase operations
+- Validate data processing and conversion functions
+- Test with sample data that matches the Firebase schema
+
+## Configuration
+```ini
+# pytest.ini
+[pytest]
+testpaths = tests
+python_files = test_*.py
+python_functions = test_*
+```

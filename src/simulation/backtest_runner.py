@@ -1,17 +1,48 @@
 #!/usr/bin/env python3
-import argparse
+"""
+Backtest Runner for Solana Trading Simulator
+
+This module provides the main class for running backtesting simulations
+with Solana trading data. It orchestrates the buy and sell simulation processes.
+"""
+
 import logging
-import json
-import sys
+import pandas as pd
 from typing import Dict, Optional, List
 
-from firebase_service import FirebaseService
-from part1_buy_simulation import BuySimulator, preprocess_pool_data
-from part2_sell_simulation import SellSimulator
+from src.data.firebase_service import FirebaseService
+from src.simulation.buy_simulator import BuySimulator
+from src.simulation.sell_simulator import SellSimulator
+from src.utils.firebase_utils import preprocess_market_data
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("SimulationRunner")
+logger = logging.getLogger(__name__)
+
+
+def preprocess_pool_data(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Preprocess pool data for simulation.
+
+    Args:
+        df: DataFrame containing pool data
+
+    Returns:
+        Preprocessed DataFrame
+    """
+    # Create a copy to avoid modifying the original
+    df = df.copy()
+
+    # Ensure timestamp is in datetime format
+    if "timestamp" in df.columns:
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+
+    # Sort by timestamp
+    df = df.sort_values("timestamp")
+
+    # Reset index
+    df = df.reset_index(drop=True)
+
+    return df
 
 
 class BacktestRunner:
@@ -37,12 +68,27 @@ class BacktestRunner:
             min_delay: Minimum delay for buy simulation in seconds
             max_delay: Maximum delay for buy simulation in seconds
         """
-        self.firebase_service = FirebaseService(env_file, firebase_credentials)
+        # Firebase service receives credential info through environment variables
+        # loaded from the env_file. The credentials parameter is not directly used.
+        self.firebase_service = FirebaseService()
+
+        # Load environment variables if env_file is provided
+        if env_file:
+            from dotenv import load_dotenv
+
+            load_dotenv(env_file)
+
+        # If credentials are directly provided, set the environment variable
+        if firebase_credentials:
+            import os
+
+            os.environ["FIREBASE_CREDENTIALS"] = firebase_credentials
+
         self.early_mc_limit = early_mc_limit
         self.min_delay = min_delay
         self.max_delay = max_delay
-        self.buy_opportunities = []
-        self.trade_results = []
+        self.buy_opportunities: List[Dict] = []
+        self.trade_results: List[Dict] = []
 
     def run_simulation(
         self,
@@ -68,7 +114,7 @@ class BacktestRunner:
             df = self.firebase_service.fetch_market_data()
 
             # Preprocess data
-            df = self.firebase_service.preprocess_data(df)
+            df = preprocess_market_data(df)
 
             # Get unique pools
             unique_pools = df["poolAddress"].unique()
@@ -168,45 +214,3 @@ class BacktestRunner:
 
         except Exception as e:
             logger.error(f"Error calculating statistics: {str(e)}")
-
-
-def main():
-    """Main entry point for the simulation runner"""
-    parser = argparse.ArgumentParser(description="Run Solana bot backtest simulations")
-
-    parser.add_argument("--credentials", type=str, help="Firebase credentials JSON file or string")
-    parser.add_argument("--env-file", type=str, default=".env.local", help="Path to .env file")
-    parser.add_argument("--max-pools", type=int, help="Maximum number of pools to analyze (for testing)")
-    parser.add_argument(
-        "--early-mc-limit",
-        type=float,
-        default=400000,
-        help="Market cap limit for early filtering",
-    )
-    parser.add_argument("--min-delay", type=int, default=60, help="Minimum delay for buy simulation")
-    parser.add_argument("--max-delay", type=int, default=200, help="Maximum delay for buy simulation")
-
-    args = parser.parse_args()
-
-    try:
-        # Create and run simulation
-        runner = BacktestRunner(
-            firebase_credentials=args.credentials,
-            env_file=args.env_file,
-            early_mc_limit=args.early_mc_limit,
-            min_delay=args.min_delay,
-            max_delay=args.max_delay,
-        )
-
-        runner.run_simulation(max_pools=args.max_pools)
-
-        logger.info("Simulation completed successfully")
-        return 0
-
-    except Exception as e:
-        logger.error(f"Simulation failed: {str(e)}")
-        return 1
-
-
-if __name__ == "__main__":
-    sys.exit(main())

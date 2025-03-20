@@ -1,0 +1,89 @@
+---
+description: CLI implementation, documentation, and testing for Solana Trading Simulator
+globs: "run_simulation.py,**/cli.py,**/analysis/cli.py,**/scripts/**/*.py"
+---
+# CLI Guidelines
+
+## Description
+This rule provides standards for command-line interface implementation, documentation, and testing for the Solana Trading Simulator project. Apply these guidelines when developing, modifying, or documenting CLI commands.
+
+## Patterns
+- run_simulation.py
+- **/cli.py
+- **/analysis/cli.py
+- **/scripts/**/*.py
+
+## General Principles
+- Keep CLI interfaces consistent across different scripts
+- Ensure clear and helpful parameter naming
+- Provide sensible default values
+- Maintain backward compatibility when modifying parameters
+- Provide clear error messages and helpful feedback
+
+## CLI Implementation
+- Use argparse for command-line argument parsing
+- Group related parameters logically
+- Use appropriate argument types and validation
+- Provide help text for all parameters
+- Implement proper error handling and status codes
+- Use consistent parameter naming conventions:
+  - `--firebase-credentials` or `--credentials`
+  - `--env-file`
+  - `--output-dir`
+  - `--max-pools`
+  - `--min-data-points`
+  - `--verbose`
+
+## Parameter Guidelines
+- Buy parameter naming:
+  - `--early-mc-limit`
+  - `--min-delay`
+  - `--max-delay`
+  - `--mc-change-5s`
+  - `--holder-delta-30s`
+  - `--buy-volume-5s`
+  
+- Sell parameter naming:
+  - `--take-profit`
+  - `--stop-loss`
+  - `--trailing-stop`
+  - `--skip-sell`
+
+## Main Simulation CLI
+- Keep the main CLI in run_simulation.py
+- Document all parameters in help text
+- Return appropriate exit codes
+- Provide verbose logging option
+- Allow for flexible credential configuration
+- Support environment variables via .env.local file
+
+## Analysis CLI Tools
+- Use a consistent command structure for analysis tools
+- Group related analysis commands under src.analysis.cli
+- Support both file-based and direct Firebase input
+- Provide clear output formats
+- Document subcommands in help text:
+  - `analyze-all`: Analyze all pools
+  - `analyze-invalid`: Analyze invalid pools
+  - `export`: Export pool data
+
+## Output and Logging
+- Use logging module with appropriate levels
+- Provide clear progress indicators for long-running operations
+- Format output for both human readability and machine parsing
+- Save output to files in a consistent format
+- Use timestamp in output filenames
+
+## Testing CLI Tools
+- Test CLI with various parameter combinations
+- Test both valid and invalid inputs
+- Test error handling
+- Implement integration tests for CLI commands
+- Test with mock Firebase data
+
+## CLI Documentation
+- Document all CLI options in README.md
+- Provide example command lines for common use cases
+- Document expected output formats
+- Include troubleshooting guidance
+- Reference full documentation in docs/
