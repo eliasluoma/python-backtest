@@ -1,7 +1,6 @@
 import logging
 from src.data.firebase_service import FirebaseService
 from src.data.cache_service import DataCacheService
-from pathlib import Path
 
 # Asetukset
 MIN_DATA_POINTS = 600
@@ -91,7 +90,7 @@ def analyze_and_cache_pools(firebase_service, cache_service, pool_ids):
 
     # Hae ja tallenna hyväksyttyjen poolien data
     logger.info(f"\nHyväksytyt poolit: {len(accepted_pool_ids)}")
-    logger.info(f"Aloitetaan hyväksyttyjen poolien tallennus tietokantaan...")
+    logger.info("Aloitetaan hyväksyttyjen poolien tallennus tietokantaan...")
 
     for i, pool_id in enumerate(accepted_pool_ids):
         try:

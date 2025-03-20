@@ -145,8 +145,8 @@ def run_simulation_with_local_db(args, buy_params, sell_params) -> int:
         from src.simulation.buy_simulator import BuySimulator
         from src.simulation.sell_simulator import SellSimulator
 
-        # Flag to use specific pools for testing
-        use_specific_pools = True
+        # Flag to use all pools instead of specific test pools
+        use_specific_pools = False
         test_pool_ids = [
             "12H7zN3gXRfUeu2fCQjooPAofbBL2wz7X7wKoS44oJkX",  # Stop loss test
             "12QspooeZFsA4d41KtLz4p3e8YyLzPxG4bShsUCBbEgU",  # Try another pool
@@ -173,6 +173,13 @@ def run_simulation_with_local_db(args, buy_params, sell_params) -> int:
 
         # Use the specific test pools if enabled
         pool_ids = test_pool_ids if use_specific_pools else cache_service.get_pool_ids()
+
+        # Limit the number of pools to process if max_pools is specified
+        if args.max_pools and len(pool_ids) > args.max_pools:
+            logger.info(f"Limiting to {args.max_pools} pools (from {len(pool_ids)} available)")
+            pool_ids = pool_ids[: args.max_pools]
+        else:
+            logger.info(f"Processing {len(pool_ids)} pools")
 
         # Process each pool
         for pool_id in pool_ids:
