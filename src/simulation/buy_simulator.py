@@ -201,13 +201,19 @@ class BuySimulator:
 
             # Apply early market cap filter if enabled
             if self.early_mc_limit > 0:
-                max_mc = pool_data["marketCap"].max()
-                if max_mc > self.early_mc_limit:
+                # Find the index for data around 10 seconds after launch
+                # Most pools have data every 2-3 seconds, so we'll use index 4-5 to be approximately 10 seconds
+                mc_check_index = min(5, len(pool_data) - 1)  # Use index 5 or last row if data is shorter
+
+                # Get market cap at this time point
+                early_mc = pool_data["marketCap"].iloc[mc_check_index]
+
+                if early_mc > self.early_mc_limit:
                     logger.warning(
-                        f"Pool {pool_address} exceeds early market cap limit: {max_mc:.0f} > {self.early_mc_limit:.0f}"
+                        f"Pool {pool_address} exceeds early market cap limit: {early_mc:.0f} > {self.early_mc_limit:.0f}"
                     )
                     return None
-                logger.info(f"Pool passes early MC filter: {max_mc:.0f} <= {self.early_mc_limit:.0f}")
+                logger.info(f"Pool passes early MC filter: {early_mc:.0f} <= {self.early_mc_limit:.0f}")
 
             # Wait for minimum delay before considering buying
             if self.min_delay > 0:

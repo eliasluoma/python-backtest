@@ -8,12 +8,15 @@ import argparse
 import logging
 import traceback
 import pandas as pd
+import warnings
 
 logger = logging.getLogger(__name__)
 
 # Import the required modules
-from src.simulation.backtest_runner import BacktestRunner
 from src.data.cache_service import DataCacheService
+
+# Suppress pandas warnings for timestamp conversions
+warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
 
 
 def add_simulate_subparser(subparsers: argparse._SubParsersAction) -> None:
@@ -103,12 +106,16 @@ def simulate_command(args) -> int:
         return run_simulation_with_local_db(args, buy_params, sell_params)
     else:
         try:
+            # Import here to avoid circular imports
+            from src.simulation.backtest_runner import BacktestRunner
+
             # For Firebase simulation, use BacktestRunner
+            # Note: BacktestRunner currently expects positional arguments
             runner = BacktestRunner(
                 args.max_pools,
                 args.min_data_points,
-                buy_params,
-                sell_params,
+                args.mc_change_5s,  # Pass the raw value instead of the dict
+                args.holder_delta_30s,  # Pass the raw value instead of the dict
                 args.early_mc_limit,
                 args.min_delay,
                 args.max_delay,
@@ -181,6 +188,9 @@ def run_simulation_with_local_db(args, buy_params, sell_params) -> int:
         else:
             logger.info(f"Processing {len(pool_ids)} pools")
 
+        # Log timestamp handling message once
+        logger.info("Converting timestamps - this may take a moment...")
+
         # Process each pool
         for pool_id in pool_ids:
             logger.info(f"Processing pool {pool_id}")
@@ -205,25 +215,29 @@ def run_simulation_with_local_db(args, buy_params, sell_params) -> int:
                 # Handle timestamp format conversion if needed
                 if "timestamp" in df.columns:
                     try:
-                        # Try to convert timestamps to pandas datetime
-                        df["timestamp"] = pd.to_datetime(df["timestamp"])
-                    except Exception as e:
-                        logger.warning(f"Error converting timestamps: {str(e)}")
+                        # Try to convert timestamps to pandas datetime with a more flexible approach
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore")
+                            df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed", utc=True)
+                    except:
+                        # More graceful error handling without long error messages
+                        logger.warning(f"Timestamp conversion issue for pool {pool_id} - trying fallback method")
 
-                        # Try to handle inconsistent timestamp formats
-                        if "timestamp" in df.columns:
-                            # Check for rows with invalid timestamp format
-                            invalid_formats = []
-                            for i, ts in enumerate(df["timestamp"]):
-                                try:
-                                    pd.to_datetime(ts)
-                                except:
-                                    invalid_formats.append(i)
+                        # Try to handle inconsistent timestamp formats with a fallback method
+                        invalid_formats = []
+                        for i, ts in enumerate(df["timestamp"]):
+                            try:
+                                pd.to_datetime(ts)
+                            except:
+                                invalid_formats.append(i)
 
-                            if invalid_formats:
-                                logger.warning(f"Dropping {len(invalid_formats)} rows with invalid timestamps")
-                                df = df.drop(invalid_formats)
-                                df["timestamp"] = pd.to_datetime(df["timestamp"])
+                        if invalid_formats:
+                            # Just log the count without detailed messages
+                            logger.warning(f"Dropping {len(invalid_formats)} rows with invalid timestamps")
+                            df = df.drop(invalid_formats)
+                            with warnings.catch_warnings():
+                                warnings.simplefilter("ignore")
+                                df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
 
                 logger.info(f"Successfully loaded {len(df)} rows of market data for pool {pool_id}")
 
@@ -380,5 +394,29 @@ def calculate_and_display_stats(trade_results, metrics=None):
         for reason, count in metrics["exit_reasons"].items():
             percentage = (count / metrics["total_trades"]) * 100
             logger.info(f"  {reason}: {count} ({percentage:.1f}%)")
+
+    # Generate and display detailed trading log
+    if trade_results:
+        logger.info("\n=== DETAILED TRADING LOG ===")
+        logger.info(
+            f"{'Pool Address':<45} | {'Buy Time':<25} | {'Sell Time':<25} | {'Buy MC':<15} | {'Sell MC':<15} | {'Profit %':<10} | {'Exit Reason':<20}"
+        )
+        logger.info(f"{'-'*45} | {'-'*25} | {'-'*25} | {'-'*15} | {'-'*15} | {'-'*10} | {'-'*20}")
+
+        # Sort trades by profit percentage
+        sorted_trades = sorted(trade_results, key=lambda x: x.get("profit_ratio", 1.0) - 1.0, reverse=True)
+
+        for trade in sorted_trades:
+            pool_addr = trade.get("pool_address", "Unknown")
+            buy_time = str(trade.get("entry_time", "Unknown"))
+            sell_time = str(trade.get("exit_time", "Unknown"))
+            buy_mc = f"{trade.get('entry_price', 0):.2f}"
+            sell_mc = f"{trade.get('exit_price', 0):.2f}"
+            profit_pct = f"{(trade.get('profit_ratio', 1.0) - 1.0) * 100:.2f}%"
+            exit_reason = trade.get("exit_reason", "Unknown")
+
+            logger.info(
+                f"{pool_addr:<45} | {buy_time:<25} | {sell_time:<25} | {buy_mc:<15} | {sell_mc:<15} | {profit_pct:<10} | {exit_reason:<20}"
+            )
 
     return metrics
