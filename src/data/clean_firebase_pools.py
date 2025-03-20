@@ -434,13 +434,19 @@ class FirebasePoolCleaner:
 
         success_count = 0
         error_count = 0
+        start_time = time.time()
+        total_documents = 0
 
         # Process pools in batches to avoid overloading Firebase
-        batch_size = 20
+        batch_size = 50  # Increased from 20 for faster processing
         for i in range(0, len(pool_ids), batch_size):
+            batch_start_time = time.time()
             pool_batch = pool_ids[i : i + batch_size]
-            logger.info(f"Backing up batch {i//batch_size + 1}: {len(pool_batch)} pools")
+            logger.info(
+                f"Backing up batch {i//batch_size + 1}/{(len(pool_ids)-1)//batch_size + 1}: {len(pool_batch)} pools"
+            )
 
+            batch_documents = 0
             for pool_id in pool_batch:
                 try:
                     # Get reference to the source pool document
@@ -487,14 +493,31 @@ class FirebasePoolCleaner:
                     if batch_count > 0:
                         write_batch.commit()
 
-                    logger.info(
-                        f"Successfully backed up pool {pool_id} with {len(contexts)} data points to {backup_collection_name}"
-                    )
+                    batch_documents += len(contexts) + 1  # +1 for the pool document itself
+                    total_documents += len(contexts) + 1
+
+                    logger.info(f"Backed up pool {pool_id} with {len(contexts)} data points")
                     success_count += 1
 
                 except Exception as e:
                     logger.error(f"Error backing up pool {pool_id} to Firestore: {e}")
                     error_count += 1
+
+            # Calculate and log batch performance metrics
+            batch_time = time.time() - batch_start_time
+            docs_per_second = batch_documents / batch_time if batch_time > 0 else 0
+            logger.info(f"Batch completed in {batch_time:.2f}s ({docs_per_second:.2f} docs/s)")
+
+            # Progress update
+            elapsed = time.time() - start_time
+            progress = (i + len(pool_batch)) / len(pool_ids)
+            estimated_total = elapsed / progress if progress > 0 else 0
+            remaining = estimated_total - elapsed
+
+            logger.info(
+                f"Progress: {progress:.1%} - {success_count}/{len(pool_ids)} pools - "
+                + f"Time: {elapsed:.1f}s elapsed, ~{remaining:.1f}s remaining"
+            )
 
             # Small delay between batches to avoid overloading Firebase
             time.sleep(1)
@@ -505,6 +528,8 @@ class FirebasePoolCleaner:
             "total_pools": len(pool_ids),
             "successful_backups": success_count,
             "failed_backups": error_count,
+            "total_documents": total_documents,
+            "execution_time_seconds": time.time() - start_time,
             "pool_ids": pool_ids,
         }
 
@@ -515,9 +540,18 @@ class FirebasePoolCleaner:
         except Exception as e:
             logger.error(f"Error saving backup summary: {e}")
 
+        # Final performance summary
+        total_time = time.time() - start_time
+        pools_per_second = success_count / total_time if total_time > 0 else 0
+        docs_per_second = total_documents / total_time if total_time > 0 else 0
+
+        logger.info(f"Firestore backup completed in {total_time:.2f}s")
+        logger.info(f"Performance: {pools_per_second:.2f} pools/s, {docs_per_second:.2f} docs/s")
         logger.info(
-            f"Firestore backup completed to collection '{backup_collection_name}'. {success_count} successful, {error_count} failed."
+            f"Backup collection: '{backup_collection_name}' ({success_count} pools, {total_documents} documents)"
         )
+        logger.info(f"Results: {success_count} successful, {error_count} failed")
+
         return error_count == 0
 
     def run_cleanup(
