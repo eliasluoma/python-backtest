@@ -19,28 +19,103 @@ from src.utils.firebase_utils import preprocess_market_data
 logger = logging.getLogger(__name__)
 
 
-def preprocess_pool_data(df: pd.DataFrame) -> pd.DataFrame:
+def calculate_percentage_change(series, window=5):
     """
-    Preprocess pool data for simulation.
+    Calculate the percentage change over a window of data points.
 
     Args:
-        df: DataFrame containing pool data
+        series: Pandas Series containing numeric values
+        window: Number of data points to consider for the change
 
     Returns:
-        Preprocessed DataFrame
+        Series with percentage changes
     """
-    # Create a copy to avoid modifying the original
-    df = df.copy()
+    return series.pct_change(periods=window) * 100
 
-    # Ensure timestamp is in datetime format
+
+def calculate_absolute_change(series, window=5):
+    """
+    Calculate the absolute change over a window of data points.
+
+    Args:
+        series: Pandas Series containing numeric values
+        window: Number of data points to consider for the change
+
+    Returns:
+        Series with absolute changes
+    """
+    return series.diff(periods=window)
+
+
+def preprocess_pool_data(df):
+    """
+    Preprocess the pool data by ensuring all required columns exist and are properly formatted.
+
+    Args:
+        df: DataFrame with raw pool data
+
+    Returns:
+        DataFrame with preprocessed data
+    """
+    # Ensure that we have a DataFrame to work with
+    if df is None or df.empty:
+        return pd.DataFrame()
+
+    # Convert timestamp to datetime if it exists
     if "timestamp" in df.columns:
-        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        # Try to handle various timestamp formats
+        try:
+            df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed")
+        except Exception as e:
+            logger.warning(f"Error converting timestamps with mixed format: {str(e)}")
+            # Try with ISO format
+            try:
+                df["timestamp"] = pd.to_datetime(df["timestamp"], format="ISO8601")
+            except Exception as e:
+                logger.warning(f"Error converting timestamps with ISO8601 format: {str(e)}")
+                # Fall back to the most flexible approach
+                try:
+                    df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+                    # Drop rows with invalid timestamps
+                    df = df.dropna(subset=["timestamp"])
+                except Exception as e:
+                    logger.error(f"Failed to parse timestamps: {str(e)}")
+                    return pd.DataFrame()
 
-    # Sort by timestamp
-    df = df.sort_values("timestamp")
+    # Ensure the DataFrame is sorted by timestamp
+    if "timestamp" in df.columns:
+        df = df.sort_values("timestamp")
 
-    # Reset index
-    df = df.reset_index(drop=True)
+    # Calculate additional metrics if needed
+    metrics_to_calculate = []
+
+    if "marketCap" in df.columns:
+        # Calculate market cap changes
+        if "marketCapChange5s" not in df.columns:
+            metrics_to_calculate.append("marketCapChange5s")
+            df["marketCapChange5s"] = calculate_percentage_change(df["marketCap"], window=5)
+
+        if "marketCapChange30s" not in df.columns:
+            metrics_to_calculate.append("marketCapChange30s")
+            df["marketCapChange30s"] = calculate_percentage_change(df["marketCap"], window=30)
+
+    if "holders" in df.columns:
+        # Calculate holder changes
+        if "holderDelta5s" not in df.columns:
+            metrics_to_calculate.append("holderDelta5s")
+            df["holderDelta5s"] = calculate_absolute_change(df["holders"], window=5)
+
+        if "holderDelta30s" not in df.columns:
+            metrics_to_calculate.append("holderDelta30s")
+            df["holderDelta30s"] = calculate_absolute_change(df["holders"], window=30)
+
+        if "holderDelta60s" not in df.columns:
+            metrics_to_calculate.append("holderDelta60s")
+            df["holderDelta60s"] = calculate_absolute_change(df["holders"], window=60)
+
+    # If we calculated any new metrics, log them
+    if metrics_to_calculate:
+        logger.debug(f"Calculated additional metrics: {', '.join(metrics_to_calculate)}")
 
     return df
 

@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("SolanaSimulator")
 
 # Import command modules
-from src.cli.commands.simulate import add_simulate_subparser, handle_simulate_command
+from src.cli.commands.simulate import add_simulate_subparser, simulate_command
 from src.cli.commands.analyze import add_analyze_subparser, handle_analyze_command
 from src.cli.commands.export import add_export_subparser, handle_export_command
 from src.cli.commands.visualize import add_visualize_subparser, handle_visualize_command
@@ -121,7 +121,7 @@ def main() -> int:
     try:
         # Dispatch to the appropriate command handler
         if args.command == "simulate":
-            return handle_simulate_command(args)
+            return simulate_command(args)
         elif args.command == "analyze":
             return handle_analyze_command(args)
         elif args.command == "export":
