@@ -9,7 +9,7 @@ All field names use camelCase to match the REQUIRED_FIELDS from pool_analyzer.py
 import argparse
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import time
 from datetime import datetime
 import sys
@@ -169,7 +169,7 @@ def update_specific_pools(
         return False
 
     logger.info(f"Updating {len(pool_ids)} specific pools with min data points: {min_data_points}")
-    print(f"\nPäivitetään {len(pool_ids)} poolia (vähintään {min_data_points} datapistettä vaaditaan)")
+    print("\nPäivitetään {len(pool_ids)} poolia (vähintään {min_data_points} datapistettä vaaditaan)")
 
     success_count = 0
     error_count = 0
@@ -331,6 +331,7 @@ def import_missing_pools(
     firebase_service: FirebaseService,
     limit: Optional[int] = None,
     min_data_points: int = 600,
+    source_collection: str = "marketContext",
 ) -> bool:
     """
     Import only pools that don't exist in the local database and refresh incomplete pools.
@@ -340,6 +341,7 @@ def import_missing_pools(
         firebase_service: The Firebase service instance
         limit: Maximum number of new pools to import
         min_data_points: Minimum data points required for a pool
+        source_collection: Name of the Firestore collection to use
 
     Returns:
         bool: Whether the import was successful
@@ -351,7 +353,7 @@ def import_missing_pools(
     # 0. PART ZERO: Haetaan lista tarkistetuista pooleista
     verified_pools = cache_service.get_verified_pools()
     verified_pool_ids = {pool["pool_id"].lower() for pool in verified_pools}
-    print(f"\n--- AIEMMIN TARKISTETTUJEN POOLIEN TARKISTUS ---")
+    print("\n--- AIEMMIN TARKISTETTUJEN POOLIEN TARKISTUS ---")
     print(f"Löytyi {len(verified_pool_ids)} aiemmin tarkistettua poolia, joiden eheys on varmistettu")
 
     # Näytä esimerkkejä
@@ -417,7 +419,7 @@ def import_missing_pools(
     # 2. PART TWO: Käytetään nopeaa arviointia datapisteiden määrälle poolien karsimiseksi
     # Tämä on fast_pool_check.py:n tekniikan sovellus, joka arvioi datapisteet dokumentti-ID:iden perusteella
     print("\n--- NOPEA POOLIEN ARVIOINTI ---")
-    print(f"Arvioidaan poolien datapisteiden määrä nopealla menetelmällä...")
+    print("Arvioidaan poolien datapisteiden määrä nopealla menetelmällä...")
 
     # Alusta oikean kokoiset listat
     pools_to_check = completely_new_pools.copy()
@@ -508,7 +510,7 @@ def import_missing_pools(
         print("\n===== OPTIMOINTI: OHITETAAN OLEMASSA OLEVIEN POOLIEN VERTAILU =====")
         print("Ei löytynyt tarkistamattomia pooleja paikallisessa tietokannassa.")
         print("Ohitetaan olemassa olevien poolien vertailu kokonaan.")
-        incomplete_pools = []
+        incomplete_pools: List[Tuple[str, int, int]] = []
     else:
         print("\n--- OLEMASSA OLEVIEN POOLIEN VERTAILU ---")
 
@@ -528,7 +530,7 @@ def import_missing_pools(
 
             # Jos Firebasessa on merkittävästi enemmän dataa, lisää se täydennettäviin pooleihin
             if actual_count > local_data_count + 10 and actual_count >= min_data_points:
-                incomplete_pools.append(pool_id)
+                incomplete_pools.append((pool_id, local_data_count, actual_count))
 
     end_time = time.time()
     time_taken = end_time - start_time
@@ -552,14 +554,17 @@ def import_missing_pools(
     # Yhdistetään uudet ja puutteelliset poolit, mutta poistetaan jo tarkistetut
     # Käytetään nyt acceptable_pools-listaa täysin uusille pooleille
     # Ei tuoda jo tarkistettuja (verified) pooleja uudelleen
-    all_pools_to_import = [
-        pool_id for pool_id in (acceptable_pools + incomplete_pools) if pool_id.lower() not in verified_pool_ids
-    ]
+
+    # Extract string pool IDs from both lists
+    potential_ids_from_acceptable = [pid for pid in acceptable_pools]
+    potential_ids_from_incomplete = [pid_tuple[0] for pid_tuple in incomplete_pools]
+
+    combined_potential_ids = list(set(potential_ids_from_acceptable + potential_ids_from_incomplete))
+
+    all_pools_to_import = [pid for pid in combined_potential_ids if pid.lower() not in verified_pool_ids]
 
     # Tulosta tilasto jo tarkistetuista ja ohitetuista pooleista
-    skipped_verified = [
-        pool_id for pool_id in (acceptable_pools + incomplete_pools) if pool_id.lower() in verified_pool_ids
-    ]
+    skipped_verified = [pid for pid in combined_potential_ids if pid.lower() in verified_pool_ids]
 
     if skipped_verified:
         print(f"\nJo tarkistettuja pooleja ohitettiin: {len(skipped_verified)} kpl")
@@ -580,7 +585,7 @@ def import_missing_pools(
         logger.info(f"Limiting import to {limit} total pools")
 
     # Import the pools
-    print(f"\n--- ALOITETAAN POOLIEN TUONTI ---")
+    print("\n--- ALOITETAAN POOLIEN TUONTI ---")
     print(
         f"Tuodaan {len(all_pools_to_import)} puulia (uudet: {len([p for p in all_pools_to_import if p in acceptable_pools])}, puutteelliset: {len([p for p in all_pools_to_import if p in incomplete_pools])})"
     )
@@ -622,7 +627,7 @@ def import_missing_pools(
         mark_time = time.time() - mark_start_time
 
         print(f"Merkittiin {marked_count} poolia tarkistetuksi (kesto: {mark_time:.2f} sekuntia)")
-        print(f"Nämä poolit ohitetaan seuraavissa tarkistuksissa automaattisesti.")
+        print("Nämä poolit ohitetaan seuraavissa tarkistuksissa automaattisesti.")
     else:
         print("Ei uusia tarkistettuja pooleja merkittäväksi.")
 
@@ -1052,7 +1057,7 @@ def import_new_pools(
 
     # Calculate and display statistics
     avg_accuracy = sum(estimation_accuracy) / len(estimation_accuracy) if estimation_accuracy else 0
-    print(f"\nFast pool evaluation completed:")
+    print("\nFast pool evaluation completed:")
     print(f"  Evaluated: {len(new_pools)} pools")
     print(f"  Accepted: {len(acceptable_pools)} pools")
     print(f"  Rejected: {len(rejected_pools)} pools")
@@ -1062,10 +1067,10 @@ def import_new_pools(
 
     # Record data point counts for rejected pools
     if rejected_pool_data:
-        print(f"\nRecording data point counts for {len(rejected_pool_data)} rejected pools...")
+        print("\nRecording data point counts for rejected pools...")
         recorded_count = cache_service.record_pool_data_points(rejected_pool_data)
         print(f"Recorded data points for {recorded_count} rejected pools")
-        print(f"These pools will be skipped in future checks unless min_points is lowered")
+        print("These pools will be skipped in future checks unless min_points is lowered")
 
     if not acceptable_pools:
         print("\nNo pools with sufficient data points found. Nothing to import.")
@@ -1079,7 +1084,7 @@ def import_new_pools(
         logger.info(f"Limiting import to {limit} pools")
 
     # 6. Import the acceptable pools
-    print(f"\n--- IMPORTING NEW POOLS ---")
+    print("\n--- IMPORTING NEW POOLS ---")
     print(f"Importing {len(acceptable_pools)} new pools with sufficient data points from '{source_collection}'...")
     print("This may take several minutes depending on the number of pools...")
     import_start_time = time.time()
@@ -1120,12 +1125,12 @@ def import_new_pools(
         mark_time = time.time() - mark_start_time
 
         print(f"Marked {marked_count} pools as verified (duration: {mark_time:.2f} seconds)")
-        print(f"These pools will be skipped in future checks automatically.")
+        print("These pools will be skipped in future checks automatically.")
     else:
         print("No new verified pools to mark.")
 
     total_time = time.time() - start_time
-    print(f"\n===== IMPORT NEW POOLS COMPLETED =====")
+    print("\n===== IMPORT NEW POOLS COMPLETED =====")
     print(f"Total time: {total_time:.2f} seconds")
 
     return result
@@ -1270,10 +1275,10 @@ def check_data_integrity(
 
     # Record data point counts for rejected pools
     if rejected_data:
-        print(f"\nRecording data point counts for {len(rejected_data)} rejected pools...")
+        print("\nRecording data point counts for rejected pools...")
         recorded_count = cache_service.record_pool_data_points(rejected_data)
         print(f"Recorded data points for {recorded_count} rejected pools")
-        print(f"These pools will be skipped in future checks unless min_points is lowered")
+        print("These pools will be skipped in future checks unless min_points is lowered")
 
     if not incomplete_pools:
         print("\nNo incomplete pools found. Local database is consistent with Firebase.")
@@ -1296,7 +1301,7 @@ def check_data_integrity(
         logger.info(f"Limiting update to {limit} incomplete pools")
 
     # 6. Update the incomplete pools
-    print(f"\n--- UPDATING INCOMPLETE POOLS ---")
+    print("\n--- UPDATING INCOMPLETE POOLS ---")
     print(f"Updating {len(incomplete_pools)} incomplete pools...")
     print("This may take several minutes depending on the number of pools...")
     update_start_time = time.time()
@@ -1340,12 +1345,12 @@ def check_data_integrity(
         mark_time = time.time() - mark_start_time
 
         print(f"Marked {marked_count} pools as verified (duration: {mark_time:.2f} seconds)")
-        print(f"These pools will be skipped in future integrity checks.")
+        print("These pools will be skipped in future integrity checks.")
     else:
         print("No pools marked as verified after update.")
 
     total_time = time.time() - start_time
-    print(f"\n===== DATA INTEGRITY CHECK COMPLETED =====")
+    print("\n===== DATA INTEGRITY CHECK COMPLETED =====")
     print(f"Total time: {total_time:.2f} seconds")
 
     return result
