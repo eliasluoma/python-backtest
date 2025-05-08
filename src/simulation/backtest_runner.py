@@ -63,24 +63,16 @@ def preprocess_pool_data(df):
 
     # Convert timestamp to datetime if it exists
     if "timestamp" in df.columns:
-        # Try to handle various timestamp formats
+        # Käytä yksinkertaista ja luotettavaa tapaa aikaleiman muuntamiseen
+        # ISO 8601 -formaatti toimii suoraan ilman format-parametria
         try:
-            df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed")
+            df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce", utc=True)
+            # Pudota rivit, joissa on NaT (Not a Time) arvoja
+            df = df.dropna(subset=["timestamp"])
+            logger.debug(f"Successfully converted timestamps to datetime format")
         except Exception as e:
-            logger.warning(f"Error converting timestamps with mixed format: {str(e)}")
-            # Try with ISO format
-            try:
-                df["timestamp"] = pd.to_datetime(df["timestamp"], format="ISO8601")
-            except Exception as e:
-                logger.warning(f"Error converting timestamps with ISO8601 format: {str(e)}")
-                # Fall back to the most flexible approach
-                try:
-                    df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
-                    # Drop rows with invalid timestamps
-                    df = df.dropna(subset=["timestamp"])
-                except Exception as e:
-                    logger.error(f"Failed to parse timestamps: {str(e)}")
-                    return pd.DataFrame()
+            logger.warning(f"Error converting timestamps: {str(e)}")
+            # Jos muunnos epäonnistuu, jätä timestamp-sarake ennalleen
 
     # Ensure the DataFrame is sorted by timestamp
     if "timestamp" in df.columns:

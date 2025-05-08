@@ -27,6 +27,7 @@ def get_default_stoploss_params() -> Dict[str, float]:
         "holder_growth_60s_moderate": 30.0,
         "buy_volume_moderate": 15.0,
         "mc_drop_limit": -40.0,
+        "stop_loss_confirmation_count": 3,  # Number of consecutive data points below stop loss to trigger sell
     }
 
 
@@ -160,15 +161,24 @@ class SellSimulator:
             Dictionary with trade result details if successful, None otherwise
         """
         try:
+            # Helper function to ensure numeric values
+            def ensure_float(val):
+                if isinstance(val, str):
+                    try:
+                        return float(val)
+                    except ValueError:
+                        return 0.0
+                return val if val is not None else 0.0
+                
             # Extract buy opportunity details
-            pool_address = buy_opportunity["pool_address"]
-            entry_price = buy_opportunity["entry_price"]
-            entry_time = buy_opportunity["entry_time"]
-            entry_row = buy_opportunity["entry_row"]
-            entry_metrics = buy_opportunity["entry_metrics"]
+            pool_address = buy_opportunity.get("poolAddress") or buy_opportunity.get("pool_address")
+            entry_price = ensure_float(buy_opportunity.get("entry_price"))
+            entry_time = buy_opportunity.get("entry_time")
+            entry_row = buy_opportunity.get("entry_row", 0)
+            entry_metrics = buy_opportunity.get("entry_metrics", {})
 
             # Get post-entry data for simulation
-            pool_data = buy_opportunity["post_entry_data"]
+            pool_data = buy_opportunity.get("post_entry_data")
 
             if len(pool_data) < 10:
                 logger.warning(f"Insufficient data for sell simulation on pool {pool_address}")
@@ -181,14 +191,19 @@ class SellSimulator:
             max_price = entry_price
             exit_reason = ""
             current_metrics = {}
+            
+            # Track consecutive stop loss points
+            stop_loss_count = 0
+            stop_loss_confirmation_count = int(self.stoploss_params.get("stop_loss_confirmation_count", 3))
+            logger.info(f"Using stop loss confirmation count: {stop_loss_confirmation_count}")
 
             # Track position through the data
             for index in range(len(pool_data)):
                 try:
                     # Get current price and time
-                    current_price = pool_data.iloc[index]["marketCap"]
+                    current_price = ensure_float(pool_data.iloc[index]["marketCap"])
                     current_time = pd.to_datetime(pool_data.iloc[index]["timestamp"])
-                    profit_ratio = current_price / entry_price
+                    profit_ratio = current_price / entry_price if entry_price > 0 else 0
 
                     # Update maximum price and profit
                     max_price = max(max_price, current_price)
@@ -196,14 +211,19 @@ class SellSimulator:
 
                     # Collect current metrics
                     try:
+                        # Helper function to get float values from dataframe
+                        def get_metric_value(df_row, key, default=0):
+                            val = df_row.get(key, default)
+                            return ensure_float(val)
+                            
                         current_metrics = {
-                            "mc_change_5s": pool_data.iloc[index].get("marketCapChange5s", 0),
-                            "holder_change_5s": pool_data.iloc[index].get("holderDelta5s", 0),
-                            "holder_change_30s": pool_data.iloc[index].get("holderDelta30s", 0),
-                            "holder_change_60s": pool_data.iloc[index].get("holderDelta60s", 0),
-                            "buy_volume_5s": pool_data.iloc[index].get("buyVolume5s", 0),
-                            "net_volume_5s": pool_data.iloc[index].get("netVolume5s", 0),
-                            "price_change": pool_data.iloc[index].get("priceChangePercent", 0),
+                            "mc_change_5s": get_metric_value(pool_data.iloc[index], "marketCapChange5s", 0),
+                            "holder_change_5s": get_metric_value(pool_data.iloc[index], "holderDelta5s", 0),
+                            "holder_change_30s": get_metric_value(pool_data.iloc[index], "holderDelta30s", 0),
+                            "holder_change_60s": get_metric_value(pool_data.iloc[index], "holderDelta60s", 0),
+                            "buy_volume_5s": get_metric_value(pool_data.iloc[index], "buyVolume5s", 0),
+                            "net_volume_5s": get_metric_value(pool_data.iloc[index], "netVolume5s", 0),
+                            "price_change": get_metric_value(pool_data.iloc[index], "priceChangePercent", 0),
                         }
                     except Exception as e:
                         logger.warning(f"Error collecting metrics at index {index}: {str(e)}")
@@ -277,6 +297,7 @@ class SellSimulator:
                                 and buy_volume > self.stoploss_params["buy_volume_moderate"]
                             ):
                                 logger.debug("Ignoring stop loss due to strong holder growth")
+                                stop_loss_count = 0  # Reset stop loss counter on strong growth
                                 continue
 
                             # Moderate holder growth - don't sell
@@ -286,17 +307,29 @@ class SellSimulator:
                                 and buy_volume > self.stoploss_params["buy_volume_moderate"]
                             ):
                                 logger.debug("Ignoring stop loss due to moderate holder growth")
+                                stop_loss_count = 0  # Reset stop loss counter on moderate growth
                                 continue
-
-                            exit_reason = "Stop Loss"
-                            logger.info(f"Stop loss triggered at price ratio {profit_ratio:.2f}")
-                            break
+                                
+                            # Increment stop loss counter and check if we've reached the confirmation count
+                            stop_loss_count += 1
+                            logger.debug(f"Stop loss condition met for {stop_loss_count}/{stop_loss_confirmation_count} consecutive data points")
+                            
+                            if stop_loss_count >= stop_loss_confirmation_count:
+                                exit_reason = "Stop Loss"
+                                logger.info(f"Stop loss triggered at price ratio {profit_ratio:.2f} after {stop_loss_count} consecutive data points")
+                                break
+                            else:
+                                # Not enough consecutive stop loss points yet, continue
+                                continue
                         except Exception as e:
                             logger.error(f"Error in stop loss logic: {str(e)}")
                             continue
+                    else:
+                        # Price is above stop loss but below take profit - reset counter
+                        stop_loss_count = 0
 
                     # 4. Force sell at end of data
-                    elif index == len(pool_data) - 1:
+                    if index == len(pool_data) - 1:
                         exit_reason = "Force Sell"
                         logger.info("Forced sell at end of data")
                         break
@@ -343,7 +376,7 @@ class SellSimulator:
                 "exit_price": current_price,
                 "exit_reason": exit_reason,
                 "profit_ratio": profit_ratio,
-                "max_profit": max_profit,
+                "max_profit": max_price,
                 "trade_duration": (current_time - pd.to_datetime(entry_time)).total_seconds(),
                 "investment_sol": self.initial_investment,
                 "profit_sol": profit_sol,

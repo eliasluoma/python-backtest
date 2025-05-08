@@ -127,13 +127,22 @@ class BuySimulator:
                         # Calculate growth from start
                         start_mc = pool_data["marketCap"].iloc[0]
                         current_mc = pool_data["marketCap"].iloc[-1]
+                        
+                        # Convert to float if they are strings
+                        if isinstance(start_mc, str):
+                            start_mc = float(start_mc)
+                        if isinstance(current_mc, str):
+                            current_mc = float(current_mc)
+                            
                         if start_mc > 0:
                             actual_value = ((current_mc / start_mc) - 1) * 100
-                    elif metric_name == "holder_growth_from_start" and "holders" in pool_data.columns:
-                        # Calculate holder growth
-                        start_holders = pool_data["holders"].iloc[0]
-                        current_holders = pool_data["holders"].iloc[-1]
-                        actual_value = current_holders - start_holders
+                    elif metric_name == "holder_growth_from_start" and "holdersGrowthFromStart" in pool_data.columns:
+                        # Use directly the holdersGrowthFromStart field instead of calculating it
+                        actual_value = pool_data["holdersGrowthFromStart"].iloc[-1]
+                        
+                        # Convert to float if it's a string
+                        if isinstance(actual_value, str):
+                            actual_value = float(actual_value)
 
                 # If we still don't have a value, log a warning and continue
                 if actual_value is None:
@@ -207,6 +216,9 @@ class BuySimulator:
 
                 # Get market cap at this time point
                 early_mc = pool_data["marketCap"].iloc[mc_check_index]
+                # Convert to float if it's a string
+                if isinstance(early_mc, str):
+                    early_mc = float(early_mc)
 
                 if early_mc > self.early_mc_limit:
                     logger.warning(
@@ -235,26 +247,49 @@ class BuySimulator:
                 current_row = pool_data.iloc[i]
 
                 # Get current price metrics
+                current_metrics = {}
+                
+                # Helper function to convert string values to float
+                def get_float_value(row, key, default=0):
+                    value = row.get(key, default)
+                    if isinstance(value, str):
+                        try:
+                            return float(value)
+                        except ValueError:
+                            return default
+                    return value
+                
                 current_metrics = {
-                    "mc_change_5s": current_row.get("marketCapChange5s", 0),
-                    "mc_change_30s": current_row.get("marketCapChange30s", 0),
-                    "holder_delta_30s": current_row.get("holderDelta30s", 0),
-                    "buy_volume_5s": current_row.get("buyVolume5s", 0),
-                    "net_volume_5s": current_row.get("netVolume5s", 0),
-                    "buy_sell_ratio_10s": current_row.get("buySellRatio10s", 1.0),
-                    "large_buy_5s": current_row.get("largeBuys5s", 0),
+                    "mc_change_5s": get_float_value(current_row, "marketCapChange5s", 0),
+                    "mc_change_30s": get_float_value(current_row, "marketCapChange30s", 0),
+                    "holder_delta_30s": get_float_value(current_row, "holderDelta30s", 0),
+                    "buy_volume_5s": get_float_value(current_row, "buyVolume5s", 0),
+                    "net_volume_5s": get_float_value(current_row, "netVolume5s", 0),
+                    "buy_sell_ratio_10s": get_float_value(current_row, "buySellRatio10s", 1.0),
+                    "large_buy_5s": get_float_value(current_row, "largeBuys5s", 0),
                 }
 
                 # Get metrics from the beginning of data for growth checks
                 initial_row = pool_data.iloc[0]
+                
+                # Convert marketCap values to float if they are strings
+                current_market_cap = current_row["marketCap"]
+                initial_market_cap = initial_row["marketCap"]
+                
+                if isinstance(current_market_cap, str):
+                    current_market_cap = float(current_market_cap)
+                
+                if isinstance(initial_market_cap, str):
+                    initial_market_cap = float(initial_market_cap)
+                
                 initial_metrics = {
                     "mc_growth_from_start": (
-                        (current_row["marketCap"] / initial_row["marketCap"] - 1) * 100
-                        if "marketCap" in initial_row and initial_row["marketCap"] > 0
+                        (current_market_cap / initial_market_cap - 1) * 100
+                        if initial_market_cap > 0
                         else 0
                     ),
                     "holder_growth_from_start": (
-                        current_row["holders"] - initial_row["holders"] if "holders" in initial_row else 0
+                        current_row["holdersGrowthFromStart"] if "holdersGrowthFromStart" in current_row else 0
                     ),
                 }
 
@@ -262,6 +297,10 @@ class BuySimulator:
                 if self.check_buy_conditions(current_metrics, initial_metrics, pool_data.iloc[: i + 1]):
                     # Calculate the entry price (market cap)
                     entry_price = current_row["marketCap"]
+                    # Convert to float if it's a string
+                    if isinstance(entry_price, str):
+                        entry_price = float(entry_price)
+                        
                     entry_time = (
                         current_row["timestamp"].isoformat()
                         if isinstance(current_row["timestamp"], datetime)
