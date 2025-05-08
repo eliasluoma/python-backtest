@@ -56,19 +56,20 @@ def initialize_firebase():
         return None
 
 
-def get_pool_ids(db, limit=None):
+def get_pool_ids(db, limit=None, collection_name: str = "marketContext"):
     """
-    Get a list of all pool IDs from the marketContext collection.
+    Get a list of all pool IDs from the specified collection.
 
     Args:
         db: Firestore database client
         limit: Maximum number of pool IDs to return (optional)
+        collection_name: Name of the Firestore collection to query (default: "marketContext")
 
     Returns:
         List of pool IDs
     """
     try:
-        pools_collection = db.collection("marketContext")
+        pools_collection = db.collection(collection_name)
         if limit:
             pools = list(pools_collection.list_documents())[:limit]
         else:
@@ -223,7 +224,6 @@ def extract_nested_fields(df):
         ("trade_last5Seconds.tradeCount.sell.big", ["tradeLast5Seconds", "tradeCount", "sell", "big"]),
         ("trade_last5Seconds.tradeCount.sell.super", ["tradeLast5Seconds", "tradeCount", "sell", "super"]),
         ("trade_last5Seconds.tradeCount.bot", ["tradeLast5Seconds", "tradeCount", "bot"]),
-        
         # 10s data camelCase
         ("trade_last10Seconds.volume.buy", ["tradeLast10Seconds", "volume", "buy"]),
         ("trade_last10Seconds.volume.sell", ["tradeLast10Seconds", "volume", "sell"]),
@@ -239,7 +239,6 @@ def extract_nested_fields(df):
         ("trade_last10Seconds.tradeCount.sell.big", ["tradeLast10Seconds", "tradeCount", "sell", "big"]),
         ("trade_last10Seconds.tradeCount.sell.super", ["tradeLast10Seconds", "tradeCount", "sell", "super"]),
         ("trade_last10Seconds.tradeCount.bot", ["tradeLast10Seconds", "tradeCount", "bot"]),
-        
         # Snake case muoto (alkuperäiset kentät jätetään ennalleen)
         ("trade_last5Seconds.volume.buy", ["trade_last5Seconds", "volume", "buy"]),
         ("trade_last5Seconds.volume.sell", ["trade_last5Seconds", "volume", "sell"]),
@@ -255,7 +254,6 @@ def extract_nested_fields(df):
         ("trade_last5Seconds.tradeCount.sell.big", ["trade_last5Seconds", "tradeCount", "sell", "big"]),
         ("trade_last5Seconds.tradeCount.sell.super", ["trade_last5Seconds", "tradeCount", "sell", "super"]),
         ("trade_last5Seconds.tradeCount.bot", ["trade_last5Seconds", "tradeCount", "bot"]),
-        
         # 10s data snake_case
         ("trade_last10Seconds.volume.buy", ["trade_last10Seconds", "volume", "buy"]),
         ("trade_last10Seconds.volume.sell", ["trade_last10Seconds", "volume", "sell"]),
@@ -281,7 +279,7 @@ def extract_nested_fields(df):
         root_field = keys[0]
         if root_field in df.columns:
             result_df[col_name] = df.apply(lambda row: safe_get(row.get(root_field, {}), keys[1:]), axis=1)
-            
+
     # Käsittele creationTime erikseen - jos se puuttuu mutta originalTimestamp löytyy, käytä sitä
     if "creationTime" not in result_df.columns and "originalTimestamp" in df.columns:
         result_df["creationTime"] = df["originalTimestamp"]
@@ -308,7 +306,7 @@ def preprocess_market_data(df):
     # Tarkista onko datassa nestettyjä kenttiä missä tahansa muodossa
     has_nested_camel = any("tradeLast" in col for col in result.columns)
     has_nested_snake = any("trade_last" in col for col in result.columns)
-    
+
     # Poimi nested-kentät jos niitä on missä tahansa muodossa
     if has_nested_camel or has_nested_snake:
         result = extract_nested_fields(result)

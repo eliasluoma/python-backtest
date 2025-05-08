@@ -56,10 +56,17 @@ def add_cache_subparser(subparsers):
         "--new-only", "-n", action="store_true", help="Import only pools that don't exist in the local cache"
     )
     import_parser.add_argument("--schema", "-s", type=str, help="Path to schema file (defaults to schema.sql)")
-    
+    import_parser.add_argument(
+        "--source-collection",
+        type=str,
+        default="marketContext",
+        help="Name of the Firestore collection to import from (e.g., marketContext_1, default: marketContext)",
+    )
+
     # NEW: Import New Pools command
-    import_new_parser = cache_subparsers.add_parser("import-new-pools", 
-                                                    help="Import only new pools from Firebase to cache")
+    import_new_parser = cache_subparsers.add_parser(
+        "import-new-pools", help="Import only new pools from Firebase to cache"
+    )
     import_new_parser.add_argument(
         "--limit", "-l", type=int, default=None, help="Maximum number of new pools to import (default: all new pools)"
     )
@@ -70,13 +77,17 @@ def add_cache_subparser(subparsers):
         default=600,
         help="Minimum data points required for a pool to be imported (default: 600 = 10 minutes)",
     )
-    
+
     # NEW: Check Data Integrity command
-    check_integrity_parser = cache_subparsers.add_parser("check-data-integrity", 
-                                                        help="Check and update incomplete pools in local database")
+    check_integrity_parser = cache_subparsers.add_parser(
+        "check-data-integrity", help="Check and update incomplete pools in local database"
+    )
     check_integrity_parser.add_argument(
-        "--limit", "-l", type=int, default=None, 
-        help="Maximum number of incomplete pools to update (default: all incomplete pools)"
+        "--limit",
+        "-l",
+        type=int,
+        default=None,
+        help="Maximum number of incomplete pools to update (default: all incomplete pools)",
     )
     check_integrity_parser.add_argument(
         "--min-points",
@@ -146,7 +157,11 @@ def update_all_pools(cache_service: DataCacheService, firebase_service: Firebase
 
 
 def update_specific_pools(
-    cache_service: DataCacheService, firebase_service: FirebaseService, pool_ids: List[str], min_data_points: int = 0
+    cache_service: DataCacheService,
+    firebase_service: FirebaseService,
+    pool_ids: List[str],
+    min_data_points: int = 0,
+    source_collection: str = "marketContext",
 ) -> bool:
     """Update specific pools."""
     if not pool_ids:
@@ -161,14 +176,14 @@ def update_specific_pools(
     no_data_count = 0
     skipped_count = 0
     insufficient_count = 0
-    
+
     # Näytä edistymispalkki
     total_pools = len(pool_ids)
     progress_bar_width = 50
-    
+
     print("\nPooli päivityksen edistyminen:")
     print(f"[{'_' * progress_bar_width}] 0%")
-    
+
     # Update each pool
     start_time = time.time()
     for index, pool_id in enumerate(pool_ids):
@@ -177,11 +192,14 @@ def update_specific_pools(
             progress = (index + 1) / total_pools
             progress_bar = int(progress_bar_width * progress)
             if (index + 1) % max(1, min(5, total_pools // 10)) == 0 or index == total_pools - 1:
-                print(f"\r[{'=' * progress_bar}{' ' * (progress_bar_width - progress_bar)}] {int(progress * 100)}%", end="")
-                
+                print(
+                    f"\r[{'=' * progress_bar}{' ' * (progress_bar_width - progress_bar)}] {int(progress * 100)}%",
+                    end="",
+                )
+
             # Logita yksityiskohtaista tietoa
             logger.debug(f"Processing pool {index+1}/{total_pools}: {pool_id}")
-            
+
             # Check if pool meets minimum data points requirement locally before fetching from Firebase
             if min_data_points > 0:
                 pool_data = cache_service.get_pool_data(pool_id)
@@ -193,7 +211,7 @@ def update_specific_pools(
 
             # Fetch data from Firebase
             fetch_start = time.time()
-            df = firebase_service.fetch_pool_data(pool_id)
+            df = firebase_service.fetch_pool_data(pool_id, collection_name=source_collection)
             fetch_duration = time.time() - fetch_start
 
             if df is None or df.empty:
@@ -214,7 +232,9 @@ def update_specific_pools(
 
             if success:
                 success_count += 1
-                logger.info(f"Successfully updated pool {pool_id} with {len(df)} data points (fetch: {fetch_duration:.2f}s, update: {update_duration:.2f}s)")
+                logger.info(
+                    f"Successfully updated pool {pool_id} with {len(df)} data points (fetch: {fetch_duration:.2f}s, update: {update_duration:.2f}s)"
+                )
             else:
                 error_count += 1
                 logger.error(f"Failed to update pool {pool_id}")
@@ -222,10 +242,10 @@ def update_specific_pools(
         except Exception as e:
             error_count += 1
             logger.error(f"Error updating pool {pool_id}: {e}")
-    
+
     # Loppuun uusi rivi
     print()
-    
+
     end_time = time.time()
     total_time = end_time - start_time
     avg_time = total_time / max(1, len(pool_ids))
@@ -314,133 +334,141 @@ def import_missing_pools(
 ) -> bool:
     """
     Import only pools that don't exist in the local database and refresh incomplete pools.
-    
+
     Args:
         cache_service: The data cache service instance
         firebase_service: The Firebase service instance
         limit: Maximum number of new pools to import
         min_data_points: Minimum data points required for a pool
-        
+
     Returns:
         bool: Whether the import was successful
     """
     print("\n===== ALOITETAAN POOLIEN TARKISTUS JA TUONTI =====\n")
     print("Aloitetaan puulien tuonti (uudet ja keskeneräiset)")
     start_time = time.time()
-    
+
     # 0. PART ZERO: Haetaan lista tarkistetuista pooleista
     verified_pools = cache_service.get_verified_pools()
     verified_pool_ids = {pool["pool_id"].lower() for pool in verified_pools}
     print(f"\n--- AIEMMIN TARKISTETTUJEN POOLIEN TARKISTUS ---")
     print(f"Löytyi {len(verified_pool_ids)} aiemmin tarkistettua poolia, joiden eheys on varmistettu")
-    
+
     # Näytä esimerkkejä
     if verified_pools:
         print("\nEsimerkkejä aiemmin tarkastetuista pooleista:")
         for i, pool in enumerate(verified_pools[:5]):
             print(f"  {i+1}. {pool['pool_id']} - tarkistettu {pool['verified_at']}")
-            if pool.get('note'):
+            if pool.get("note"):
                 print(f"     Huomio: {pool['note']}")
         if len(verified_pools) > 5:
             print(f"  ... ja {len(verified_pools) - 5} muuta")
-    
+
     # 1. PART ONE: Find completely new pools
     # Get existing pool IDs from local cache (with their datapoint counts)
     print("\n--- PAIKALLISEN TIETOKANNAN TARKISTUS ---")
     local_pools_info = cache_service.get_pools_with_datapoints()
-    
+
     # Näytä yksityiskohtaista tietoa paikallisista pooleista
     print(f"Löytyi {len(local_pools_info)} poolia paikallisessa tietokannassa:")
     total_local_datapoints = sum(pool_info["dataPoints"] for pool_info in local_pools_info)
     print(f"Paikallisessa tietokannassa on yhteensä {total_local_datapoints} datapistettä")
     print(f"Keskimäärin {total_local_datapoints / max(1, len(local_pools_info)):.1f} datapistettä per pooli")
-    
+
     # Näytä muutama esimerkki
     if local_pools_info:
         print("\nEsimerkkejä pooleista paikallisessa tietokannassa:")
         for i, pool_info in enumerate(sorted(local_pools_info, key=lambda x: x["dataPoints"], reverse=True)[:5]):
-            verified_status = "✓ Tarkistettu" if pool_info["poolAddress"].lower() in verified_pool_ids else "☐ Ei tarkistettu"
+            verified_status = (
+                "✓ Tarkistettu" if pool_info["poolAddress"].lower() in verified_pool_ids else "☐ Ei tarkistettu"
+            )
             print(f"  {i+1}. {pool_info['poolAddress']} - {pool_info['dataPoints']} datapistettä - {verified_status}")
-    
+
     # Muunnetaan poolien osoitteet pieneen kirjainkokoon vertailua varten (case-insensitive)
     existing_pool_ids = set(pool_info["poolAddress"].lower() for pool_info in local_pools_info)
     print(f"\nLöytyi {len(existing_pool_ids)} olemassa olevaa puulia paikallisessa tietokannassa")
     logger.info(f"Found {len(existing_pool_ids)} existing pools in local database")
-    
+
     # Create a map of pool_id -> datapoints for faster lookup (käytetään lower-case)
-    local_pool_datapoints = {pool_info["poolAddress"].lower(): pool_info["dataPoints"] for pool_info in local_pools_info}
-    
+    local_pool_datapoints = {
+        pool_info["poolAddress"].lower(): pool_info["dataPoints"] for pool_info in local_pools_info
+    }
+
     # Get pools from Firebase
     print("\n--- FIREBASE-TIETOKANNAN TARKISTUS ---")
     fetch_limit = None if limit is None else limit * 2  # Double to account for filtering
-    print(f"Haetaan puulit Firebasesta (raja={fetch_limit})")
-    
+    print(f"Haetaan puulit Firebasesta (raja={fetch_limit}) Firebasesta kokoelmasta '{source_collection}'")
+
     firebase_start_time = time.time()
-    firebase_pools = firebase_service.get_available_pools(limit=fetch_limit)
+    firebase_pools = firebase_service.get_available_pools(limit=fetch_limit, collection_name=source_collection)
     firebase_fetch_time = time.time() - firebase_start_time
-    
+
     if not firebase_pools:
         print("Firebasesta ei löytynyt yhtään puulia")
         logger.error("No pools found in Firebase")
         return False
-    
+
     print(f"Löytyi {len(firebase_pools)} puulia Firebasesta (Haku kesti {firebase_fetch_time:.2f} sekuntia)")
-    
+
     # Find missing pools (in Firebase but not in local cache) - Käytetään lower-case vertailua
     completely_new_pools = [pool_id for pool_id in firebase_pools if pool_id.lower() not in existing_pool_ids]
     print(f"\nLöytyi {len(completely_new_pools)} kokonaan uutta puulia, jotka eivät ole paikallisessa tietokannassa")
-    
+
     # 2. PART TWO: Käytetään nopeaa arviointia datapisteiden määrälle poolien karsimiseksi
     # Tämä on fast_pool_check.py:n tekniikan sovellus, joka arvioi datapisteet dokumentti-ID:iden perusteella
     print("\n--- NOPEA POOLIEN ARVIOINTI ---")
     print(f"Arvioidaan poolien datapisteiden määrä nopealla menetelmällä...")
-    
+
     # Alusta oikean kokoiset listat
     pools_to_check = completely_new_pools.copy()
-    
+
     # Lisätään myös ei-tarkistetut olemassa olevat poolit
     untrusted_pools = [
-        pool_id for pool_id in firebase_pools 
+        pool_id
+        for pool_id in firebase_pools
         if pool_id.lower() in existing_pool_ids and pool_id.lower() not in verified_pool_ids
     ]
-    
+
     print(f"Täysin uusia pooleja: {len(completely_new_pools)}")
     print(f"Tarkistamattomia olemassa olevia pooleja: {len(untrusted_pools)}")
-    
+
     # Näytä edistymispalkki
     total_pools_to_check = len(pools_to_check)
     progress_bar_width = 50
-    
+
     print("\nPoolien nopean arvioinnin edistyminen:")
     print(f"[{'_' * progress_bar_width}] 0%")
-    
+
     acceptable_pools = []
     rejected_pools = []
     total_estimated = 0
     total_actual = 0
     estimation_accuracy = []
-    
+
     start_check_time = time.time()
-    
+
     # Tarkista jokainen pooli näyttäen edistymistä
     for i, pool_id in enumerate(pools_to_check):
         # Näytä edistymistä joka 10. poolin kohdalla
         if i % 10 == 0 or i == total_pools_to_check - 1:
             progress = (i + 1) / total_pools_to_check * 100
             progress_bar = int(progress / 2)  # 50 merkkiä täydelle palkille
-            print(f"\r[{'=' * progress_bar}{' ' * (50 - progress_bar)}] {progress:.1f}% ({i+1}/{total_pools_to_check})", end="")
+            print(
+                f"\r[{'=' * progress_bar}{' ' * (50 - progress_bar)}] {progress:.1f}% ({i+1}/{total_pools_to_check})",
+                end="",
+            )
             sys.stdout.flush()
-        
+
         # Arvioi poolien datapisteet nopeasti käyttäen ensimmäisen ja viimeisen dokumentin ID:tä
         estimated_count, actual_count, first_id, last_id = estimate_datapoints_for_pool(
-            firebase_service, pool_id, min_data_points
+            firebase_service, pool_id, min_data_points, source_collection=source_collection
         )
-        
+
         # Laske arvioinnin tarkkuus (jos molemmat ovat > 0)
         if estimated_count > 0 and actual_count > 0:
             accuracy = estimated_count / actual_count
             estimation_accuracy.append(accuracy)
-        
+
         # Päätä, hyväksytäänkö vai hylätäänkö pooli
         if actual_count >= min_data_points:
             acceptable_pools.append(pool_id)
@@ -448,13 +476,13 @@ def import_missing_pools(
             total_estimated += estimated_count
         else:
             rejected_pools.append(pool_id)
-    
+
     # Lopuksi uusi rivi
     print()
-    
+
     end_check_time = time.time()
     check_time = end_check_time - start_check_time
-    
+
     # Laske ja näytä tilastot
     avg_accuracy = sum(estimation_accuracy) / len(estimation_accuracy) if estimation_accuracy else 0
     print(f"\nNopeasti tarkistetut poolit: {len(pools_to_check)}")
@@ -463,7 +491,7 @@ def import_missing_pools(
     print(f"  Arvioinnin keskimääräinen tarkkuus: {avg_accuracy:.2f}")
     print(f"  Nopean tarkistuksen kesto: {check_time:.2f} sekuntia")
     print(f"  Keskimääräinen aika per pooli: {check_time / max(1, len(pools_to_check)):.4f} sekuntia")
-    
+
     # OPTIMOINTI: Jos ei löydetty hyväksyttäviä pooleja eikä ole tarkistettavia pooleja,
     # voimme lopettaa prosessin tähän ilman turhia tarkistuksia
     if len(acceptable_pools) == 0 and len(untrusted_pools) == 0:
@@ -473,7 +501,7 @@ def import_missing_pools(
         print("\nEi uusia tai puutteellisia puuleja tuotavaksi, tietokanta on ajan tasalla")
         logger.info("No new or incomplete pools to import, database is up to date (optimized early exit)")
         return True
-    
+
     # 3. PART THREE: Process incomplete pools (for existing, non-verified pools)
     # OPTIMOINTI: Ohitetaan olemassa olevien poolien vertailu kokonaan, jos ei ole tarkistamattomia pooleja
     if len(untrusted_pools) == 0:
@@ -483,30 +511,34 @@ def import_missing_pools(
         incomplete_pools = []
     else:
         print("\n--- OLEMASSA OLEVIEN POOLIEN VERTAILU ---")
-        
+
         # Riittää kun tuodaan vain ne poolit jotka puuttuvat paikallisesta tietokannasta täysin
         # tai joissa on liian vähän datapisteitä paikallisesti
         incomplete_pools = []
-        
+
         # Tarkistetaan puuttuvat poolit myös nopealla arviointimenetelmällä
         for i, pool_id in enumerate(untrusted_pools):
             pool_id_lower = pool_id.lower()
             local_data_count = local_pool_datapoints.get(pool_id_lower, 0)
-            
+
             # Arvioi poolien datapisteet nopeasti käyttäen ensimmäisen ja viimeisen dokumentin ID:tä
             estimated_count, actual_count, first_id, last_id = estimate_datapoints_for_pool(
-                firebase_service, pool_id, min_data_points
+                firebase_service, pool_id, min_data_points, source_collection=source_collection
             )
-            
+
             # Jos Firebasessa on merkittävästi enemmän dataa, lisää se täydennettäviin pooleihin
             if actual_count > local_data_count + 10 and actual_count >= min_data_points:
                 incomplete_pools.append(pool_id)
-    
+
     end_time = time.time()
     time_taken = end_time - start_time
-    print(f"\nLöytyi {len(incomplete_pools)} puutteellista puulia jotka päivitetään (tarkistus kesti {time_taken:.2f} sekuntia)")
-    logger.info(f"Found {len(incomplete_pools)} incomplete pools that will be refreshed (check took {time_taken:.2f} seconds)")
-    
+    print(
+        f"\nLöytyi {len(incomplete_pools)} puutteellista puulia jotka päivitetään (tarkistus kesti {time_taken:.2f} sekuntia)"
+    )
+    logger.info(
+        f"Found {len(incomplete_pools)} incomplete pools that will be refreshed (check took {time_taken:.2f} seconds)"
+    )
+
     # OPTIMOINTI #2: Jos hyväksyttäviä uusia pooleja ei ole ja puutteellisia pooleja ei löydy,
     # prosessi voidaan päättää aikaisemmin (turha jatkaa tuontiprosessia)
     if len(acceptable_pools) == 0 and len(incomplete_pools) == 0:
@@ -516,83 +548,86 @@ def import_missing_pools(
         print("\nEi uusia tai puutteellisia puuleja tuotavaksi, tietokanta on ajan tasalla")
         logger.info("No new or incomplete pools to import, database is up to date (optimized exit #2)")
         return True
-    
+
     # Yhdistetään uudet ja puutteelliset poolit, mutta poistetaan jo tarkistetut
     # Käytetään nyt acceptable_pools-listaa täysin uusille pooleille
     # Ei tuoda jo tarkistettuja (verified) pooleja uudelleen
     all_pools_to_import = [
-        pool_id for pool_id in (acceptable_pools + incomplete_pools)
-        if pool_id.lower() not in verified_pool_ids
+        pool_id for pool_id in (acceptable_pools + incomplete_pools) if pool_id.lower() not in verified_pool_ids
     ]
-    
+
     # Tulosta tilasto jo tarkistetuista ja ohitetuista pooleista
     skipped_verified = [
-        pool_id for pool_id in (acceptable_pools + incomplete_pools)
-        if pool_id.lower() in verified_pool_ids
+        pool_id for pool_id in (acceptable_pools + incomplete_pools) if pool_id.lower() in verified_pool_ids
     ]
-    
+
     if skipped_verified:
         print(f"\nJo tarkistettuja pooleja ohitettiin: {len(skipped_verified)} kpl")
-        for i, pool_id in enumerate(skipped_verified[:min(3, len(skipped_verified))]):
+        for i, pool_id in enumerate(skipped_verified[: min(3, len(skipped_verified))]):
             print(f"  {i+1}. {pool_id} - jo tarkistettu aiemmin")
         if len(skipped_verified) > 3:
             print(f"  ... ja {len(skipped_verified) - 3} muuta")
-    
+
     if not all_pools_to_import:
         print("\nEi uusia tai puutteellisia puuleja tuotavaksi, tietokanta on ajan tasalla")
         logger.info("No new or incomplete pools to import, database is up to date")
         return True
-    
+
     # Apply limit if specified
     if limit is not None and len(all_pools_to_import) > limit:
         print(f"\nRajoitetaan tuonti {limit} puuliin (alkuperäinen määrä: {len(all_pools_to_import)})")
         all_pools_to_import = all_pools_to_import[:limit]
         logger.info(f"Limiting import to {limit} total pools")
-    
+
     # Import the pools
     print(f"\n--- ALOITETAAN POOLIEN TUONTI ---")
-    print(f"Tuodaan {len(all_pools_to_import)} puulia (uudet: {len([p for p in all_pools_to_import if p in acceptable_pools])}, puutteelliset: {len([p for p in all_pools_to_import if p in incomplete_pools])})")
+    print(
+        f"Tuodaan {len(all_pools_to_import)} puulia (uudet: {len([p for p in all_pools_to_import if p in acceptable_pools])}, puutteelliset: {len([p for p in all_pools_to_import if p in incomplete_pools])})"
+    )
     print("Tuonti voi kestää useita minuutteja poolien määrästä riippuen...")
     import_start_time = time.time()
-    
+
     # Päivitetään poolit ja kerätään onnistuneiden tuontien ID:t
-    result = update_specific_pools(cache_service, firebase_service, all_pools_to_import, min_data_points)
-    
+    result = update_specific_pools(
+        cache_service, firebase_service, all_pools_to_import, min_data_points, source_collection=source_collection
+    )
+
     import_time = time.time() - import_start_time
     print(f"\nTuonti valmis! Kesto: {import_time:.2f} sekuntia")
-    
+
     # Merkitään onnistuneesti tuodut poolit tarkistetuiksi
     print("\n--- MERKITÄÄN TARKISTETUT POOLIT ---")
-    
+
     # Haetaan onnistuneet poolit - päivitetään yhtenäisyys tuonnin jälkeen
     # Tämä on yksinkertaistettu toteutus; todellisuudessa pitäisi seurata update_specific_pools-funktion
     # palauttamia onnistumistietoja ja käyttää niitä.
-    
-    # Tässä esimerkissä oletetaan, että kaikki poolit, joilla on vähintään min_data_points datapistettä, 
+
+    # Tässä esimerkissä oletetaan, että kaikki poolit, joilla on vähintään min_data_points datapistettä,
     # on tuotu onnistuneesti
     new_pools_after_import = cache_service.get_pools_with_datapoints(min_data_points=min_data_points)
     new_pool_ids = {pool_info["poolAddress"].lower() for pool_info in new_pools_after_import}
-    
+
     # Onnistuneesti tuodut poolit ovat ne, jotka nyt ovat tietokannassa ja joita tuotiin
     successfully_imported = [
-        pool_id for pool_id in all_pools_to_import
+        pool_id
+        for pool_id in all_pools_to_import
         if pool_id.lower() in new_pool_ids and pool_id.lower() not in verified_pool_ids
     ]
-    
+
     if successfully_imported:
         mark_start_time = time.time()
         # Merkitään poolit tarkistetuiksi
         note = f"Tarkistettu automaattisesti {datetime.now().strftime('%Y-%m-%d %H:%M')} tuonnin yhteydessä"
         marked_count = cache_service.mark_pools_verified(successfully_imported, note)
         mark_time = time.time() - mark_start_time
-        
+
         print(f"Merkittiin {marked_count} poolia tarkistetuksi (kesto: {mark_time:.2f} sekuntia)")
         print(f"Nämä poolit ohitetaan seuraavissa tarkistuksissa automaattisesti.")
     else:
         print("Ei uusia tarkistettuja pooleja merkittäväksi.")
-    
+
     print("\n===== POOLIEN TARKISTUS JA TUONTI VALMIS =====\n")
-    
+
     return result
 
 
@@ -616,6 +651,7 @@ def import_pools(
     limit: Optional[int] = None,
     min_data_points: int = 600,
     new_only: bool = False,
+    source_collection: str = "marketContext",
 ) -> bool:
     """
     Import pools from Firebase to SQLite cache with specific criteria.
@@ -627,6 +663,7 @@ def import_pools(
         limit: Maximum number of pools to import (if None, imports all available pools)
         min_data_points: Minimum number of data points required for a pool to be imported
         new_only: If True, only import pools that don't exist in the local cache
+        source_collection: Name of the Firestore collection to use
 
     Returns:
         bool: Whether the import was successful
@@ -635,15 +672,17 @@ def import_pools(
 
     # If specific pools are provided, use those
     if pool_ids:
-        logger.info(f"Importing {len(pool_ids)} specific pools")
-        return update_specific_pools(cache_service, firebase_service, pool_ids, min_data_points)
+        logger.info(f"Importing {len(pool_ids)} specific pools from '{source_collection}'")
+        return update_specific_pools(
+            cache_service, firebase_service, pool_ids, min_data_points, source_collection=source_collection
+        )
 
     # Otherwise, get all available pools
     # If limit is None, don't apply a limit to Firebase query
     fetch_limit = None if limit is None else limit * 2  # Double the limit to account for filtering
-    all_pools = firebase_service.get_available_pools(limit=fetch_limit)
+    all_pools = firebase_service.get_available_pools(limit=fetch_limit, collection_name=source_collection)
     if not all_pools:
-        logger.error("No pools found in Firebase")
+        logger.error(f"No pools found in Firebase collection '{source_collection}'")
         return False
 
     logger.info(
@@ -684,7 +723,7 @@ def import_pools(
 
         try:
             # Fetch data from Firebase
-            df = firebase_service.fetch_pool_data(pool_id)
+            df = firebase_service.fetch_pool_data(pool_id, collection_name=source_collection)
 
             if df.empty:
                 logger.warning(f"No data found for pool {pool_id}")
@@ -727,18 +766,42 @@ def handle_cache_command(args: argparse.Namespace):
     cache_dir = Path(__file__).parent.parent.parent.parent / "cache"
     cache_dir.mkdir(exist_ok=True)
 
-    # Create cache service
-    db_path = cache_dir / "pools.db"
+    # Determine database path based on source_collection for import commands
+    db_name = "pools.db"
+    if (
+        args.cache_command == "import"
+        and hasattr(args, "source_collection")
+        and args.source_collection != "marketContext"
+    ):
+        db_name = f"pools_{args.source_collection}.db"
+        logger.info(f"Using custom database file for source collection '{args.source_collection}': {db_name}")
+    elif (
+        args.cache_command in ["import-new-pools", "check-data-integrity"]
+        and hasattr(args, "source_collection")
+        and args.source_collection != "marketContext"
+    ):
+        # Assuming these might also want separate DBs if a source_collection is ever added to them and used
+        db_name = f"pools_{args.source_collection}.db"
+        logger.info(f"Using custom database file for source collection '{args.source_collection}': {db_name}")
+
+    db_path = cache_dir / db_name
     schema_path = Path(__file__).parent.parent.parent / "data" / "schema.sql"
 
     cache_service = DataCacheService(db_path=str(db_path), schema_path=str(schema_path))
+    logger.info(f"DataCacheService initialized with DB: {db_path}")
 
     # Handle subcommands
     if args.cache_command == "update":
         if args.pools:
             # Initialize Firebase service
             firebase_service = FirebaseService()
-            return update_specific_pools(cache_service, firebase_service, args.pools, min_data_points=args.min_points)
+            return update_specific_pools(
+                cache_service,
+                firebase_service,
+                args.pools,
+                min_data_points=args.min_points,
+                source_collection=args.source_collection if hasattr(args, "source_collection") else "marketContext",
+            )
         elif args.recent:
             # Initialize Firebase service
             firebase_service = FirebaseService()
@@ -777,28 +840,35 @@ def handle_cache_command(args: argparse.Namespace):
             limit=args.limit,
             min_data_points=args.min_points,
             new_only=args.new_only,
+            source_collection=args.source_collection if hasattr(args, "source_collection") else "marketContext",
         )
-        
+
     elif args.cache_command == "import-new-pools":
         # Initialize Firebase service
         firebase_service = FirebaseService()
-        
+        # Ensure source_collection is passed if it becomes an arg for this command
+        source_collection_val = args.source_collection if hasattr(args, "source_collection") else "marketContext"
+
         return import_new_pools(
             cache_service,
             firebase_service,
             limit=args.limit,
             min_data_points=args.min_points,
+            source_collection=source_collection_val,
         )
-        
+
     elif args.cache_command == "check-data-integrity":
         # Initialize Firebase service
         firebase_service = FirebaseService()
-        
+        # Ensure source_collection is passed if it becomes an arg for this command
+        source_collection_val = args.source_collection if hasattr(args, "source_collection") else "marketContext"
+
         return check_data_integrity(
             cache_service,
             firebase_service,
             limit=args.limit,
             min_data_points=args.min_points,
+            source_collection=source_collection_val,
         )
 
     else:
@@ -807,29 +877,30 @@ def handle_cache_command(args: argparse.Namespace):
 
 
 # Apufunktio poolien datapisteiden arvioimiseen
-def estimate_datapoints_for_pool(firebase_service, pool_id, min_points=600):
+def estimate_datapoints_for_pool(firebase_service, pool_id, min_points=600, source_collection: str = "marketContext"):
     """
     Arvioi datapisteiden määrän markkinakontekstien dokumentti-ID:iden perusteella
-    
+
     Args:
         firebase_service: FirebaseService-instanssi
         pool_id: Poolin ID
         min_points: Vähimmäismäärä datapisteitä, jonka poolissa pitäisi olla
-        
+        source_collection: Name of the Firestore collection to use
+
     Returns:
         tuple: (arvioitu määrä, todellinen määrä, ensimmäinen ID, viimeinen ID)
     """
     try:
-        # Hae ensimmäinen ja viimeinen dokumentti suoraan
-        first_id, last_id = firebase_service.get_first_and_last_document_id(pool_id)
-        
+        # Hae ensimmäinen ja viimeinen dokumentti suoraan määritetystä kokoelmasta
+        first_id, last_id = firebase_service.get_first_and_last_document_id(pool_id, collection_name=source_collection)
+
         if not first_id or not last_id:
             logger.debug(f"Poolille {pool_id} ei löytynyt dokumentteja")
             return 0, 0, None, None
-        
+
         # Yritä laskea arvio datapisteiden määrästä dokumentti-ID:iden perusteella
         estimated_count = 0
-        
+
         try:
             # Jos ID:t ovat muotoa marketContext_XXXXXXXXXX
             if first_id.startswith("marketContext_") and last_id.startswith("marketContext_"):
@@ -842,20 +913,21 @@ def estimate_datapoints_for_pool(firebase_service, pool_id, min_points=600):
         except (ValueError, IndexError):
             logger.debug(f"Dokumentti-ID:iden numeerinen muunnos epäonnistui: {first_id} - {last_id}")
             estimated_count = 0
-        
-        # Haetaan myös tarkka määrä
-        actual_count = firebase_service._get_single_pool_datapoints_count(pool_id)
-        
-        # Jos arvio on vähintään vaadittu minimi mutta todellinen määrä on pienempi, 
+
+        # Haetaan myös tarkka määrä määritetystä kokoelmasta
+        actual_count = firebase_service._get_single_pool_datapoints_count(pool_id, collection_name=source_collection)
+
+        # Jos arvio on vähintään vaadittu minimi mutta todellinen määrä on pienempi,
         # käytetään todellista määrää
         if estimated_count >= min_points and actual_count < min_points:
             logger.debug(f"Pooli {pool_id} hylätään todellisen määrän {actual_count} perusteella")
-        
+
         return estimated_count, actual_count, first_id, last_id
-    
+
     except Exception as e:
         logger.error(f"Virhe poolille {pool_id}: {e}")
         return 0, 0, None, None
+
 
 # NEW: Function to import only new pools
 def import_new_pools(
@@ -863,6 +935,7 @@ def import_new_pools(
     firebase_service: FirebaseService,
     limit: Optional[int] = None,
     min_data_points: int = 600,
+    source_collection: str = "marketContext",
 ) -> bool:
     """
     Import only new pools from Firebase that don't exist in the local cache.
@@ -873,40 +946,45 @@ def import_new_pools(
         firebase_service: The Firebase service instance
         limit: Maximum number of new pools to import
         min_data_points: Minimum number of data points required for a pool to be imported
+        source_collection: Name of the Firestore collection to use
 
     Returns:
         bool: Whether the import was successful
     """
-    logger.info(f"Starting import of new pools with limit={limit if limit else 'all'}, min_data_points={min_data_points}")
+    logger.info(
+        f"Starting import of new pools with limit={limit if limit else 'all'}, min_data_points={min_data_points}"
+    )
     start_time = time.time()
-    
+
     # 1. Get all existing pool IDs from local database
     print("Fetching existing pools from local database...")
     local_pools = cache_service.get_pool_ids(limit=100000)  # Get all existing pools
     logger.info(f"Found {len(local_pools)} pools in local database")
     print(f"Found {len(local_pools)} pools in local database")
-    
+
     # 1.5 Also get pools that have already been checked but had insufficient data points
     print("Fetching previously checked pools with insufficient data points...")
     previously_checked_pools = cache_service.get_pools_with_datapoints_below_threshold(min_data_points)
     previously_checked_pool_ids = {pool["pool_id"].lower() for pool in previously_checked_pools}
-    logger.info(f"Found {len(previously_checked_pool_ids)} previously checked pools with < {min_data_points} data points")
+    logger.info(
+        f"Found {len(previously_checked_pool_ids)} previously checked pools with < {min_data_points} data points"
+    )
     print(f"Found {len(previously_checked_pool_ids)} previously checked pools with insufficient data points")
-    
+
     # 2. Get all available pool IDs from Firebase
-    print("Fetching available pools from Firebase...")
+    print(f"Fetching available pools from Firebase collection '{source_collection}'...")
     # Use larger limit to account for filtering
     fetch_limit = None if limit is None else limit * 3
-    firebase_pools = firebase_service.get_available_pools(limit=fetch_limit)
-    
+    firebase_pools = firebase_service.get_available_pools(limit=fetch_limit, collection_name=source_collection)
+
     if not firebase_pools:
         logger.error("No pools found in Firebase")
         print("No pools found in Firebase")
         return False
-    
+
     logger.info(f"Found {len(firebase_pools)} pools in Firebase")
     print(f"Found {len(firebase_pools)} pools in Firebase")
-    
+
     # 3. Filter out pools that are:
     # a) already in local database, or
     # b) previously checked and had insufficient data points
@@ -915,19 +993,19 @@ def import_new_pools(
         pool_id_lower = pool_id.lower()
         if pool_id_lower not in [p.lower() for p in local_pools] and pool_id_lower not in previously_checked_pool_ids:
             new_pools.append(pool_id)
-    
+
     logger.info(f"Identified {len(new_pools)} completely new, unchecked pools")
     print(f"Identified {len(new_pools)} completely new, unchecked pools")
-    
+
     if not new_pools:
         logger.info("No new pools to import")
         print("No new pools to import. Local database is up to date.")
         return True
-    
+
     # 4. Fast evaluation of new pools
     print("\n--- FAST POOL EVALUATION ---")
     print(f"Evaluating {len(new_pools)} new pools for data point count...")
-    
+
     start_check_time = time.time()
     acceptable_pools = []
     rejected_pools = []
@@ -935,25 +1013,27 @@ def import_new_pools(
     estimation_accuracy = []
     total_estimated = 0
     total_actual = 0
-    
+
     for i, pool_id in enumerate(new_pools):
         # Display progress
         if i % 1 == 0:
             progress = (i + 1) / len(new_pools) * 100
             progress_bar = int(progress / 2)  # 50 characters for full bar
-            print(f"\r[{'=' * progress_bar}{' ' * (50 - progress_bar)}] {progress:.1f}% ({i+1}/{len(new_pools)})", end="")
+            print(
+                f"\r[{'=' * progress_bar}{' ' * (50 - progress_bar)}] {progress:.1f}% ({i+1}/{len(new_pools)})", end=""
+            )
             sys.stdout.flush()
-        
+
         # Estimate data points using the fast method
         estimated_count, actual_count, first_id, last_id = estimate_datapoints_for_pool(
-            firebase_service, pool_id, min_data_points
+            firebase_service, pool_id, min_data_points, source_collection=source_collection
         )
-        
+
         # Calculate accuracy (if both counts are > 0)
         if estimated_count > 0 and actual_count > 0:
             accuracy = estimated_count / actual_count
             estimation_accuracy.append(accuracy)
-        
+
         # Decide whether to accept or reject the pool
         if actual_count >= min_data_points:
             acceptable_pools.append(pool_id)
@@ -963,13 +1043,13 @@ def import_new_pools(
             rejected_pools.append(pool_id)
             # Save data point count for rejected pools
             rejected_pool_data[pool_id] = actual_count
-    
+
     # New line after progress bar
     print()
-    
+
     end_check_time = time.time()
     check_time = end_check_time - start_check_time
-    
+
     # Calculate and display statistics
     avg_accuracy = sum(estimation_accuracy) / len(estimation_accuracy) if estimation_accuracy else 0
     print(f"\nFast pool evaluation completed:")
@@ -979,47 +1059,49 @@ def import_new_pools(
     print(f"  Average estimation accuracy: {avg_accuracy:.2f}")
     print(f"  Evaluation time: {check_time:.2f} seconds")
     print(f"  Average time per pool: {check_time / max(1, len(new_pools)):.4f} seconds")
-    
+
     # Record data point counts for rejected pools
     if rejected_pool_data:
         print(f"\nRecording data point counts for {len(rejected_pool_data)} rejected pools...")
         recorded_count = cache_service.record_pool_data_points(rejected_pool_data)
         print(f"Recorded data points for {recorded_count} rejected pools")
         print(f"These pools will be skipped in future checks unless min_points is lowered")
-    
+
     if not acceptable_pools:
         print("\nNo pools with sufficient data points found. Nothing to import.")
         logger.info("No pools with sufficient data points found. Nothing to import.")
         return True
-    
+
     # 5. Apply limit if specified
     if limit is not None and len(acceptable_pools) > limit:
         print(f"\nLimiting import to {limit} pools (originally found: {len(acceptable_pools)})")
         acceptable_pools = acceptable_pools[:limit]
         logger.info(f"Limiting import to {limit} pools")
-    
+
     # 6. Import the acceptable pools
     print(f"\n--- IMPORTING NEW POOLS ---")
-    print(f"Importing {len(acceptable_pools)} new pools with sufficient data points...")
+    print(f"Importing {len(acceptable_pools)} new pools with sufficient data points from '{source_collection}'...")
     print("This may take several minutes depending on the number of pools...")
     import_start_time = time.time()
-    
-    result = update_specific_pools(cache_service, firebase_service, acceptable_pools, min_data_points)
-    
+
+    result = update_specific_pools(
+        cache_service, firebase_service, acceptable_pools, min_data_points, source_collection=source_collection
+    )
+
     import_time = time.time() - import_start_time
     print(f"\nImport completed! Duration: {import_time:.2f} seconds")
-    
+
     # 7. Mark successfully imported pools as verified
     print("\n--- MARKING VERIFIED POOLS ---")
-    
+
     # Get new pools after import
     new_pools_after_import = cache_service.get_pools_with_datapoints(min_data_points=min_data_points)
     new_pool_ids = {pool_info["poolAddress"].lower() for pool_info in new_pools_after_import}
-    
+
     # Find successfully imported pools
     successfully_imported = []
     imported_pool_data = {}  # Store data point counts for imported pools
-    
+
     for pool_id in acceptable_pools:
         pool_id_lower = pool_id.lower()
         if pool_id_lower in new_pool_ids:
@@ -1029,24 +1111,25 @@ def import_new_pools(
                 if pool_info["poolAddress"].lower() == pool_id_lower:
                     imported_pool_data[pool_id] = pool_info["dataPoints"]
                     break
-    
+
     if successfully_imported:
         mark_start_time = time.time()
         # Mark pools as verified with their data point counts
         note = f"Verified automatically {datetime.now().strftime('%Y-%m-%d %H:%M')} during import"
         marked_count = cache_service.mark_pools_verified(successfully_imported, note, imported_pool_data)
         mark_time = time.time() - mark_start_time
-        
+
         print(f"Marked {marked_count} pools as verified (duration: {mark_time:.2f} seconds)")
         print(f"These pools will be skipped in future checks automatically.")
     else:
         print("No new verified pools to mark.")
-    
+
     total_time = time.time() - start_time
     print(f"\n===== IMPORT NEW POOLS COMPLETED =====")
     print(f"Total time: {total_time:.2f} seconds")
-    
+
     return result
+
 
 # NEW: Function to check data integrity and update incomplete pools
 def check_data_integrity(
@@ -1054,6 +1137,7 @@ def check_data_integrity(
     firebase_service: FirebaseService,
     limit: Optional[int] = None,
     min_data_points: int = 600,
+    source_collection: str = "marketContext",
 ) -> bool:
     """
     Check local database for pools with incomplete data compared to Firebase.
@@ -1065,101 +1149,100 @@ def check_data_integrity(
         firebase_service: The Firebase service instance
         limit: Maximum number of incomplete pools to update
         min_data_points: Minimum number of data points required
+        source_collection: Name of the Firestore collection to use
 
     Returns:
         bool: Whether the integrity check and update was successful
     """
-    logger.info(f"Starting data integrity check with limit={limit if limit else 'all'}, min_data_points={min_data_points}")
+    logger.info(
+        f"Starting data integrity check with limit={limit if limit else 'all'}, min_data_points={min_data_points}"
+    )
     start_time = time.time()
-    
+
     # 1. Get all verified pool IDs from local database (pools with enough data points)
     print("Fetching verified pools from local database...")
     verified_pools = cache_service.get_verified_pools()
-    
+
     # Only consider pools as "verified" if they don't have a "Not verified" note
     verified_pool_ids = {
-        pool_info["poolAddress"].lower() 
-        for pool_info in verified_pools 
+        pool_info["poolAddress"].lower()
+        for pool_info in verified_pools
         if "not verified" not in pool_info.get("note", "").lower()
     }
-    
+
     logger.info(f"Found {len(verified_pool_ids)} verified pools in local database")
     print(f"Found {len(verified_pool_ids)} verified pools in local database")
-    
+
     # 1.5 Get also pools with insufficient data points
     previously_rejected_pools = [
-        pool_info for pool_info in verified_pools 
-        if "not verified" in pool_info.get("note", "").lower()
+        pool_info for pool_info in verified_pools if "not verified" in pool_info.get("note", "").lower()
     ]
     logger.info(f"Found {len(previously_rejected_pools)} previously rejected pools in database")
     print(f"Found {len(previously_rejected_pools)} previously rejected pools in database")
-    
+
     # 2. Get all pool information from local database
     print("Fetching all pools with data points from local database...")
     local_pools = cache_service.get_pools_with_datapoints()
-    local_pool_datapoints = {
-        pool_info["poolAddress"].lower(): pool_info["dataPoints"] 
-        for pool_info in local_pools
-    }
+    local_pool_datapoints = {pool_info["poolAddress"].lower(): pool_info["dataPoints"] for pool_info in local_pools}
     logger.info(f"Found {len(local_pool_datapoints)} pools with data points in local database")
     print(f"Found {len(local_pool_datapoints)} pools with data points in local database")
     print(f"Total data points in local database: {sum(local_pool_datapoints.values())}")
-    
+
     # 3. Get unverified pools (those with enough data but not marked as verified)
-    unverified_pool_ids = [
-        pool_id for pool_id in local_pool_datapoints.keys()
-        if pool_id not in verified_pool_ids
-    ]
-    
+    unverified_pool_ids = [pool_id for pool_id in local_pool_datapoints.keys() if pool_id not in verified_pool_ids]
+
     logger.info(f"Found {len(unverified_pool_ids)} unverified pools in local database")
     print(f"Found {len(unverified_pool_ids)} unverified pools in local database")
-    
+
     # 4. Create list of pools to check for data integrity
     pools_to_check = []
-    
+
     # Add unverified pools
     pools_to_check.extend(unverified_pool_ids)
-    
+
     # Add previously rejected pools to recheck if they now have enough data
     rejected_pool_ids = [pool["pool_id"] for pool in previously_rejected_pools]
     print(f"Adding {len(rejected_pool_ids)} previously rejected pools to check list")
     pools_to_check.extend(rejected_pool_ids)
-    
+
     # Remove duplicates
     pools_to_check = list(set(pools_to_check))
-    
+
     if not pools_to_check:
         print("\nNo pools to check for data integrity. All pools are verified.")
         logger.info("No pools to check for data integrity. All pools are verified.")
         return True
-    
+
     print(f"\nWill check data integrity for {len(pools_to_check)} pools")
-    
+
     # 5. Fast evaluation of pools to check for missing data
     print("\n--- CHECKING DATA INTEGRITY ---")
     print(f"Evaluating {len(pools_to_check)} pools for missing or updated data...")
-    
+
     start_check_time = time.time()
     incomplete_pools = []
     rejected_pools = []
     rejected_data = {}
-    
+
     for i, pool_id in enumerate(pools_to_check):
         # Display progress
         if i % 1 == 0:
             progress = (i + 1) / len(pools_to_check) * 100
             progress_bar = int(progress / 2)  # 50 characters for full bar
-            print(f"\r[{'=' * progress_bar}{' ' * (50 - progress_bar)}] {progress:.1f}% ({i+1}/{len(pools_to_check)})", end="")
+            print(
+                f"\r[{'=' * progress_bar}{' ' * (50 - progress_bar)}] {progress:.1f}% ({i+1}/{len(pools_to_check)})",
+                end="",
+            )
             sys.stdout.flush()
-        
+
         pool_id_lower = pool_id.lower()
         local_data_count = local_pool_datapoints.get(pool_id_lower, 0)
-        
+
         # Estimate data points using the fast method
         estimated_count, actual_count, first_id, last_id = estimate_datapoints_for_pool(
-            firebase_service, pool_id, min_data_points
+            firebase_service, pool_id, min_data_points, source_collection=source_collection
         )
-        
+
         # Categorize based on data point counts
         if actual_count >= min_data_points:
             # If Firebase has significantly more data than local database, add to incomplete pools
@@ -1172,72 +1255,74 @@ def check_data_integrity(
             # Record rejected pools to update their data point counts
             rejected_pools.append(pool_id)
             rejected_data[pool_id] = actual_count
-    
+
     # New line after progress bar
     print()
-    
+
     end_check_time = time.time()
     check_time = end_check_time - start_check_time
-    
+
     # Sort incomplete pools by the difference between actual and local count (largest difference first)
     incomplete_pools.sort(key=lambda x: x[2] - x[1], reverse=True)
-    
+
     print(f"\nData integrity check completed in {check_time:.2f} seconds")
     print(f"Found {len(incomplete_pools)} incomplete pools with missing or updated data")
-    
+
     # Record data point counts for rejected pools
     if rejected_data:
         print(f"\nRecording data point counts for {len(rejected_data)} rejected pools...")
         recorded_count = cache_service.record_pool_data_points(rejected_data)
         print(f"Recorded data points for {recorded_count} rejected pools")
         print(f"These pools will be skipped in future checks unless min_points is lowered")
-    
+
     if not incomplete_pools:
         print("\nNo incomplete pools found. Local database is consistent with Firebase.")
         logger.info("No incomplete pools found. Local database is consistent with Firebase.")
         return True
-    
+
     # Display some of the incomplete pools
     print("\nTop incomplete pools:")
-    for i, (pool_id, local_count, firebase_count) in enumerate(incomplete_pools[:min(5, len(incomplete_pools))]):
+    for i, (pool_id, local_count, firebase_count) in enumerate(incomplete_pools[: min(5, len(incomplete_pools))]):
         diff = firebase_count - local_count
         print(f"  {i+1}. {pool_id}: Local: {local_count}, Firebase: {firebase_count}, Missing: {diff} data points")
-    
+
     if len(incomplete_pools) > 5:
         print(f"  ... and {len(incomplete_pools) - 5} more")
-    
+
     # 5. Apply limit if specified
     if limit is not None and len(incomplete_pools) > limit:
         print(f"\nLimiting update to {limit} incomplete pools (originally found: {len(incomplete_pools)})")
         incomplete_pools = incomplete_pools[:limit]
         logger.info(f"Limiting update to {limit} incomplete pools")
-    
+
     # 6. Update the incomplete pools
     print(f"\n--- UPDATING INCOMPLETE POOLS ---")
     print(f"Updating {len(incomplete_pools)} incomplete pools...")
     print("This may take several minutes depending on the number of pools...")
     update_start_time = time.time()
-    
+
     # Extract only the pool IDs for update
     pool_ids_to_update = [pool_id for pool_id, _, _ in incomplete_pools]
-    
+
     # Update specific pools (will replace existing data)
-    result = update_specific_pools(cache_service, firebase_service, pool_ids_to_update, min_data_points)
-    
+    result = update_specific_pools(
+        cache_service, firebase_service, pool_ids_to_update, min_data_points, source_collection=source_collection
+    )
+
     update_time = time.time() - update_start_time
     print(f"\nUpdate completed! Duration: {update_time:.2f} seconds")
-    
+
     # 7. Mark successfully updated pools as verified
     print("\n--- MARKING VERIFIED POOLS ---")
-    
+
     # Get updated pools
     updated_pools = cache_service.get_pools_with_datapoints(min_data_points=min_data_points)
     updated_pool_ids = {pool_info["poolAddress"].lower(): pool_info["dataPoints"] for pool_info in updated_pools}
-    
+
     # Find successfully updated pools
     successfully_updated = []
     updated_data = {}
-    
+
     for pool_id, local_count, firebase_count in incomplete_pools:
         pool_id_lower = pool_id.lower()
         if pool_id_lower in updated_pool_ids:
@@ -1246,21 +1331,21 @@ def check_data_integrity(
             if new_count >= firebase_count * 0.9:
                 successfully_updated.append(pool_id)
                 updated_data[pool_id] = new_count
-    
+
     if successfully_updated:
         mark_start_time = time.time()
         # Mark pools as verified with their data point counts
         note = f"Verified automatically {datetime.now().strftime('%Y-%m-%d %H:%M')} during integrity check"
         marked_count = cache_service.mark_pools_verified(successfully_updated, note, updated_data)
         mark_time = time.time() - mark_start_time
-        
+
         print(f"Marked {marked_count} pools as verified (duration: {mark_time:.2f} seconds)")
         print(f"These pools will be skipped in future integrity checks.")
     else:
         print("No pools marked as verified after update.")
-    
+
     total_time = time.time() - start_time
     print(f"\n===== DATA INTEGRITY CHECK COMPLETED =====")
     print(f"Total time: {total_time:.2f} seconds")
-    
+
     return result
